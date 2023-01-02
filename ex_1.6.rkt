@@ -36,9 +36,7 @@
 ;; This is implemented as a function that accepts a message
 ;; that can be 'eval or 'D to evaluate the polynomial or
 ;; its first derivative respectively.
-;; TODO re-implement this to support a polynomial of arbitrary-order,
-;;      and more complex expressions/basis functions.
-;; TODO support anti-derivatives
+;; TODO re-implement this to support a more readable syntax
 (define (poly-path cs)
   (lambda (tag)
     (case tag  
@@ -63,10 +61,15 @@
        (let ([ds (for/list ([i (in-range (length cs))])
                    (for/sum ([j (in-range i)])
                      (* (list-ref cs j) (list-ref cs (- i j)))))])
-         (poly-path ds))])))
+         (poly-path ds))]
+      ['int  ;; anti-derivative (integration constant set to 0).
+       (let ([ds (for/list ([i (in-range (length cs))]
+                            [ci (in-list cs)])
+                   (/ ci (add1 i)))])
+         (poly-path (cons 0 ds)))])))
 
- 
 
+#|
 ;; Lagrangian for a free particle
 ;; TODO clunky notation: think of something more readable
 (define (L x xp)
@@ -76,10 +79,28 @@
 (define (S L path x0 x1 #:n-points [n 100])
   (int (L (path 'eval) (path 'D)) x0 x1 #:n-points n))
 
+(S L (poly-path '(1 2 1)) 0.0 1.0 #:n-points 1000)
+|#
+
+;; Lagrangian for a free particle (supports only polynomial paths)
+(define L
+  (lambda (path)
+    (let ([xp (path 'D)])
+      (xp 'sqr))))
+
+;; Action (supports only polynomial paths)
+(define S
+  (lambda (L t0 t1)
+    (let ([I ((L 'int) 'eval)])
+      (- (I t1) (I t0)))))
+
+(S (L (poly-path '(1 2 3 4))) 0 1)
+
+;; TODO implement a minimiser for the action.
 
 ;(display (make-grid 0.0 1.0 10.0))
 ;(int sqr 0.0 1.0 #:n-points 100000)  ;; expected: 1/3
-(S L (poly-path '(1 2 1)) 0.0 1.0 #:n-points 1000)
+
 
 ;; gradient of the path at the point t = 0.4
-(for/list ([i '(0 1 2)]) ((((poly-path '(1 2 1)) 'grad) i) 0.4))
+;(for/list ([i '(0 1 2)]) ((((poly-path '(1 2 1)) 'grad) i) 0.4))
