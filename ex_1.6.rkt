@@ -1,5 +1,8 @@
 #lang racket
 ;; SICM exercise 1.6
+;; The goal of the exercise is to impose incompatible boundary
+;; conditions for the position and velocity of a free particle lagrangian,
+;; and check what happens when we try to minimise the action integral.
 
 (require racket/vector)
 ;(require racket/flonum)
