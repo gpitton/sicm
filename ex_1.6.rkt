@@ -16,8 +16,8 @@
     (for/vector ([i (in-range n)])
       (+ a (* h i)))))
 
+;; approximates \int_x0 ^x1 f with the trapezoid rule
 (define (int f x0 x1 #:n-points [n 128])
-  ;; approximates \int_x0 ^x1 f with the trapezoid rule
   (let* ([xs (make-grid x0 x1 n)]
          [h (- (vector-ref xs 1) (vector-ref xs 0))]
          [fs (vector-map f xs)]
@@ -35,30 +35,39 @@
 ;; its first derivative respectively.
 ;; TODO re-implement this to support a polynomial of arbitrary-order,
 ;;      and more complex expressions/basis functions.
+;; TODO support anti-derivatives
 (define (poly-path cs)
   (lambda (tag)
     (case tag  
       ['eval ;; evaluate
        (lambda (t)
-         (let ([c0 (vector-ref cs 0)]
-               [c1 (vector-ref cs 1)]
-               [c2 (vector-ref cs 2)])
-           (+ (* (+ (* c2 t) c1) t) c0)))]
+         (letrec ([eval-aux
+                   ;; TODO make it tail-recursive
+                   (lambda (cs)
+                     (if (null? cs) 0
+                         (+ (car cs) (* t (eval-aux (cdr cs))))))])
+           (eval-aux cs)))]
       ['D ;; first t-derivative
-       (lambda (t)
-         (let ([c1 (vector-ref cs 1)]
-               [c2 (vector-ref cs 2)])
-           (+ (* 2 c2 t) c1)))]
+       (let ([ds (for/list ([i  (in-range (length cs))]
+                            [ci (in-list cs)])
+                     (* i ci))])
+         (poly-path (cdr ds)))]
       ['grad ;; gradient with respect to the coefficients
        (lambda (index)  ;; which coefficient
          (lambda (t)
-           (* index (vector-ref cs index) (expt t (sub1 index)))))])))
+           (* (list-ref cs index) (expt t index))))]
+      ['sqr  ;; square (Cauchy product)
+       (let ([ds (for/list ([i (in-range (length cs))])
+                   (for/sum ([j (in-range i)])
+                     (* (list-ref cs j) (list-ref cs (- i j)))))])
+         (poly-path ds))])))
 
  
 
-;; Lagrangian
+;; Lagrangian for a free particle
+;; TODO clunky notation: think of something more readable
 (define (L x xp)
-  (lambda (t) (* 1/2 (sqr (xp t)))))
+  (lambda (t) (* 1/2 (((xp 'sqr) 'eval) t))))
 
 ;; Action
 (define (S L path x0 x1 #:n-points [n 100])
@@ -66,8 +75,8 @@
 
 
 ;(display (make-grid 0.0 1.0 10.0))
-;(display (int add1 0.0 1.0 #:n-points 100))
-(S L (poly-path #(1 2 1)) 0.0 1.0 #:n-points 1000)
+;(int sqr 0.0 1.0 #:n-points 100000)  ;; expected: 1/3
+(S L (poly-path '(1 2 1)) 0.0 1.0 #:n-points 1000)
 
 ;; gradient of the path at the point t = 0.4
-(for/list ([i '(0 1 2)]) ((((poly-path #(1 2 1)) 'grad) i) 0.4))
+(for/list ([i '(0 1 2)]) ((((poly-path '(1 2 1)) 'grad) i) 0.4))
