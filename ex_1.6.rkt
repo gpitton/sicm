@@ -32,10 +32,9 @@
       (int-helper x0 x1))))
 
 
-;; A path in the form: c0 + c1 t + c2 t^2.
+;; A path in the form: c0 + c1 t + c2 t^2 + ...
 ;; This is implemented as a function that accepts a message
-;; that can be 'eval or 'D to evaluate the polynomial or
-;; its first derivative respectively.
+;; that can be one of 'eval 'D 'grad 'sqr 'int.
 ;; TODO re-implement this to support a more readable syntax
 (define (poly-path cs)
   (lambda (tag)
@@ -56,7 +55,7 @@
       ['grad ;; gradient with respect to the coefficients
        (lambda (index)  ;; which coefficient
          (lambda (t)
-           (* (list-ref cs index) (expt t index))))]
+           (expt t index)))]
       ['sqr  ;; square (Cauchy product)
        (let ([ds (for/list ([i (in-range (length cs))])
                    (for/sum ([j (in-range i)])
