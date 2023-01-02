@@ -50,7 +50,7 @@
       ['D ;; first t-derivative
        (let ([ds (for/list ([i  (in-range (length cs))]
                             [ci (in-list cs)])
-                     (* i ci))])
+                   (* i ci))])
          (poly-path (cdr ds)))]
       ['grad ;; gradient with respect to the coefficients
        (lambda (index)  ;; which coefficient
