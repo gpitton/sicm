@@ -29,7 +29,7 @@
          (symbol? sb)
          (eq? sa sb))))
 
-;; TODO simplify expressions like (* ... 0 ...) -> #'0
+
 (define-syntax (grad stx)
   (syntax-parse stx
     #:literals (+ - * ^)
@@ -60,6 +60,7 @@
     ))
 
 
+;; Tests for the grad macro
 (displayln (grad 2 c))
 (displayln (grad x c))
 (displayln (grad c c))
@@ -71,6 +72,18 @@
 (displayln (grad '(^ c 5) c))
 (displayln (grad '(+ '(* 4 x x x) '(* 2 x '(^ x 6)) -2) x))
 (displayln (grad '(+ '(* 5 '(^ x 2)) '(* 2 x) -2) x))
+
+
+;; TODO simplify expressions like (* ... 0 ...) -> #'0
+(define-syntax simplify
+  (syntax-rules ()
+    [(_ ex) ex]))
+
+
+(define-syntax D
+  (syntax-rules ()
+    [(_ ex var)
+     (simplify (grad ex var))]))
 
 
 ;; TODO we need a normal-form macro to rewrite a monomial
