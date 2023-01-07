@@ -30,7 +30,6 @@
          (eq? sa sb))))
 
 ;; TODO simplify expressions like (* ... 0 ...) -> #'0
-;; TODO support long products: (grad (* 5 x (expt x 2) (+ x x)) x)
 (define-syntax (grad stx)
   (syntax-parse stx
     #:literals (+ - * ^)
@@ -39,16 +38,18 @@
      #:when (eq-sym? #'x #'v)
      #'1]
     [(_ x:id v:id) #'0]
-    [(_ '(^ x 1) v) #'(grad x v)]
+    [(_ '(^ x 1) v:id) #'(grad x v)]
     [(_ '(^ x:id n:number) v:id)
      #:when (eq-sym? #'x #'v)
      #'`(* n (^ x ,(sub1 n)))]
-    [(_ '(+ ex0 ex1 ...) v) #'`(+ ,(grad ex0 v) ,(grad ex1 v) ...)]
-    [(_ '(- ex0 ex1 ...) v) #'`(- ,(grad ex0 v) ,(grad ex1 v) ...)]
-    [(_ '(* ex0 ex1) v) #'`(+ (* ,(grad ex0 v) ex1) (* ex0 ,(grad ex1 v)))]
-    ;[(_ (* ex0 ex1 ...) v) #'(+ (* (grad ex0 v) ex1 ...) (* (grad ex1 v) ex0 ...) ...)]
+    [(_ '(+ ex0 ex1 ...) v:id) #'`(+ ,(grad ex0 v) ,(grad ex1 v) ...)]
+    [(_ '(- ex0 ex1 ...) v:id) #'`(- ,(grad ex0 v) ,(grad ex1 v) ...)]
+    [(_ '(* ex0 ex1) v:id) #'`(+ (* ,(grad ex0 v) ex1) (* ex0 ,(grad ex1 v)))]
+    [(_ '(* ex0 ex1 ...) v:id)
+     #'`(+ (* ,(grad ex0 v) ex1 ...) (* ex0 ,(grad '(* ex1 ...) v)))]
     [_ #'"not matched"]  ;; later just return 0
     ))
+
 
 (displayln (grad 2 c))
 (displayln (grad x c))
@@ -59,7 +60,7 @@
 (displayln (grad '(- '(+ c c c) c 2) c))
 (displayln (grad '(^ c 1) c))
 (displayln (grad '(^ c 5) c))
-(displayln (grad '(+ '(* 5 x x) '(* 2 x) -2)))
+(displayln (grad '(+ '(* 4 x x x) '(* 2 x '(^ x 6)) -2) x))
 (displayln (grad '(+ '(* 5 '(^ x 2)) '(* 2 x) -2) x))
 
 
