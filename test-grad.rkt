@@ -35,18 +35,27 @@
     #:literals (+ - * ^)
     [(_ n:number _) #'0]
     [(_ x:id v:id)
-     #:when (eq-sym? #'x #'v)
-     #'1]
+      #:when (eq-sym? #'x #'v)
+      #'1]
     [(_ x:id v:id) #'0]
     [(_ '(^ x 1) v:id) #'(grad x v)]
     [(_ '(^ x:id n:number) v:id)
-     #:when (eq-sym? #'x #'v)
-     #'`(* n (^ x ,(sub1 n)))]
-    [(_ '(+ ex0 ex1 ...) v:id) #'`(+ ,(grad ex0 v) ,(grad ex1 v) ...)]
-    [(_ '(- ex0 ex1 ...) v:id) #'`(- ,(grad ex0 v) ,(grad ex1 v) ...)]
-    [(_ '(* ex0 ex1) v:id) #'`(+ (* ,(grad ex0 v) ex1) (* ex0 ,(grad ex1 v)))]
+      #:when (eq-sym? #'x #'v)
+      #'`(* n (^ x ,(sub1 n)))]
+    [(_ '(+ ex0 ex1 ...) v:id)
+      #'`(+ ,(grad ex0 v)
+            ,(grad ex1 v)
+            ...)]
+    [(_ '(- ex0 ex1 ...) v:id)
+      #'`(- ,(grad ex0 v)
+            ,(grad ex1 v)
+            ...)]
+    [(_ '(* ex0 ex1) v:id)
+      #'`(+ (* ,(grad ex0 v) ex1)
+            (* ex0 ,(grad ex1 v)))]
     [(_ '(* ex0 ex1 ...) v:id)
-     #'`(+ (* ,(grad ex0 v) ex1 ...) (* ex0 ,(grad '(* ex1 ...) v)))]
+      #'`(+ (* ,(grad ex0 v) ex1 ...)
+            (* ex0 ,(grad '(* ex1 ...) v)))]
     [_ #'"not matched"]  ;; later just return 0
     ))
 
