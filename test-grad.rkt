@@ -83,9 +83,7 @@
   (syntax-case stx ()
     [(_ op args t)
      (null? (syntax->datum #'args))
-     (with-syntax ([t-quoted
-                    (datum->syntax #'t (car (syntax->datum #'t)))])
-     #'t-quoted)]
+     #'(car 't)]
     [(_ op args t)
      (null? (syntax->datum #'t))
      (with-syntax ([args-tail
