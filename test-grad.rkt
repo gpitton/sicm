@@ -1,6 +1,7 @@
 #lang racket
 
-(require (for-syntax syntax/parse))
+(require (for-syntax syntax/parse
+                     racket/syntax))
 
 ;; Test: automatic differentiation for polynomial expressions
 
@@ -74,28 +75,62 @@
 (displayln (grad (+ (* 5 b (^ x 2)) (* 2 c x) -2) x))
 
 
-;; helper to reorder the term symbols.
-(define-for-syntax (reorder-term op args)
-  ;; t is the simplified term
-  (define (r-aux args t)
-    (cond [(null? args) '()]
-          [(null? t) (r-aux (cdr args) (list (car args)))]
-          [(number? (car args))
-           (r-aux (cdr args)
-                  (cons (op (car args) (car t))
-                        (cdr t)))]
-          [else (r-aux (cdr args)
-                       (append t (list (car args))))]))
-    (r-aux args '()))
+;; helper to reorder the term symbols at compile-time.
+;; expected behaviour:
+;;    (reorder-term op (1 2 3) ()) -> (cons (op 1 2 3) '())
+;;    (reorder-term op (1 2 x 3 x x) ()) -> (cons (op 1 2 3) (list x x x))
+(define-syntax (reorder-term stx)
+  (syntax-case stx ()
+    [(_ op args t)
+     (null? (syntax->datum #'args))
+     (with-syntax ([t-quoted
+                    (datum->syntax #'t (car (syntax->datum #'t)))])
+     #'t-quoted)]
+    [(_ op args t)
+     (null? (syntax->datum #'t))
+     (with-syntax ([args-tail
+                    (datum->syntax #'args (cdr (syntax->datum #'args)))]
+                   [args-head
+                    (datum->syntax #'args (list (car (syntax->datum #'args))))])
+       
+       #'(reorder-term op args-tail args-head))]
+    [(_ op args t)
+     (number? (car (syntax->datum #'args)))
+     (let* ([op-d (syntax->datum #'op)]
+            [args-d (syntax->datum #'args)]
+            [t-d (syntax->datum #'t)])
+       (with-syntax ([args-tail
+                      (datum->syntax #'args
+                                     (cdr args-d))]
+                     [args-add
+                      (datum->syntax #'args
+                                     (cons (eval `(,op-d ,(car args-d)
+                                                         ,(car t-d)))
+                                           (cdr t-d)))])
+         #'(reorder-term op
+                         args-tail
+                         args-add)))]
     
+    [(_ op args t)
+     (with-syntax ([args-tail
+                    (datum->syntax #'args (cdr (syntax->datum #'args)))]
+                   [t-next
+                    (datum->syntax #'t (append #'t (car (syntax->datum #'args))))])
+       #'(reorder-term op
+                       args-tail
+                       t-next))]))
+
+
+
 
 ;; simplifies a term, where a term is an S-expression in
 ;; the form: (op arg0 . args) -> (op natural? symbol)
-(define-syntax simpl-term
-  (syntax-rules (+)
-    [(_ (+ . args)) `(+ ,(reorder-term + args))]))
+;(define-syntax simpl-term
+;  (syntax-rules (+)
+;    [(_ (+ . args)) `(+ ,@(reorder-term + args '()))]))
 
-(displayln (simpl-term (+ 0 x x 2 x 3)))
+(displayln (reorder-term + (1 2 3 4) ()))
+(displayln (reorder-term * (1 2 3 4) ()))
 
 ;; TODO simplify expressions like (* ... 0 ...) -> #'0
 (define-syntax simplify
