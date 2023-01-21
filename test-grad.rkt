@@ -115,6 +115,21 @@
          #'(reorder-term op
                          args-tail
                          args-add)))]
+    ;; recursive case, we need to add a number at the head of the term
+    [(_ op args term)
+     (number? (car (syntax->datum #'args)))
+     (let ([args-d (syntax->datum #'args)]
+           [term-d (syntax->datum #'term)])
+       (with-syntax ([args-tail
+                      (datum->syntax #'args
+                                     (cdr args-d))]
+                     [num-term
+                      (datum->syntax #'args
+                                     (cons (car args-d)
+                                           term-d))])
+         #'(reorder-term op
+                         args-tail
+                         num-term)))]
     ;; recursive case, next element is a symbolic variable
     [(_ op args t)
      (let ([term (syntax->datum #'args)]
