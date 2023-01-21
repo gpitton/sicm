@@ -79,6 +79,7 @@
 ;; expected behaviour:
 ;;    (reorder-term op (1 2 3) ()) -> (cons (op 1 2 3) '())
 ;;    (reorder-term op (1 2 x 3 x x) ()) -> (cons (op 1 2 3) (list x x x))
+;; TODO this is not going to work well e.g. with (- 8 3 2) or (/ 8 3 2)
 (define-syntax (reorder-term stx)
   (syntax-case stx ()
     ;; args is empty: just return t
@@ -92,10 +93,11 @@
     [(_ op args term)
      (null? (syntax->datum #'term))
      (let ([args-d (syntax->datum #'args)])
-       (with-syntax ([args-tail
-                      (datum->syntax #'args (cdr args-d))]
-                     [args-head
-                      (datum->syntax #'args (list (car args-d)))])
+       (with-syntax
+           ([args-tail
+             (datum->syntax #'args (cdr args-d))]
+            [args-head
+             (datum->syntax #'args (list (car args-d)))])
          #'(reorder-term op args-tail args-head)))]
     ;; recursive case, next element is a number
     [(_ op args term)
@@ -104,14 +106,15 @@
      (let* ([op-d (syntax->datum #'op)]
             [args-d (syntax->datum #'args)]
             [term-d (syntax->datum #'term)])
-       (with-syntax ([args-tail
-                      (datum->syntax #'args
-                                     (cdr args-d))]
-                     [args-add
-                      (datum->syntax #'args
-                                     (cons (eval `(,op-d ,(car args-d)
-                                                         ,(car term-d)))
-                                           (cdr term-d)))])
+       (with-syntax
+           ([args-tail
+             (datum->syntax #'args
+                            (cdr args-d))]
+            [args-add
+             (datum->syntax #'args
+                            (cons (eval `(,op-d ,(car args-d)
+                                                ,(car term-d)))
+                                  (cdr term-d)))])
          #'(reorder-term op
                          args-tail
                          args-add)))]
@@ -120,13 +123,14 @@
      (number? (car (syntax->datum #'args)))
      (let ([args-d (syntax->datum #'args)]
            [term-d (syntax->datum #'term)])
-       (with-syntax ([args-tail
-                      (datum->syntax #'args
-                                     (cdr args-d))]
-                     [num-term
-                      (datum->syntax #'args
-                                     (cons (car args-d)
-                                           term-d))])
+       (with-syntax
+           ([args-tail
+             (datum->syntax #'args
+                            (cdr args-d))]
+            [num-term
+             (datum->syntax #'args
+                            (cons (car args-d)
+                                  term-d))])
          #'(reorder-term op
                          args-tail
                          num-term)))]
@@ -134,11 +138,12 @@
     [(_ op args term)
      (let ([args-d (syntax->datum #'args)]
            [term-d (syntax->datum #'term)])
-       (with-syntax ([args-tail
-                      (datum->syntax #'args (cdr args-d))]
-                     [next-term
-                      (datum->syntax #'term (append term-d
-                                                    `(,(car args-d))))])
+       (with-syntax
+           ([args-tail
+             (datum->syntax #'args (cdr args-d))]
+            [next-term
+             (datum->syntax #'term (append term-d
+                                           `(,(car args-d))))])
          #'(reorder-term op
                          args-tail
                          next-term)))]))
@@ -154,9 +159,75 @@
 
 (displayln (reorder-term + (1 2 3 4) ()))
 (displayln (reorder-term * (1 2 3 4) ()))
+(displayln (reorder-term + (c) ()))
 (displayln (reorder-term + (2 3 c 3) ()))
 (displayln (reorder-term + (c 2) ()))
 (displayln (reorder-term + (c 8 c c 4 c 1 c c) ()))
+(displayln (reorder-term * (c 8 c c 4 c 1 c c) ()))
+
+
+;; simplifies a term in the form (3 x x x) -> (3 (^ x 3))
+(define-syntax (mult->expt stx)
+  (syntax-case stx ()
+    [(_ term)
+     (null? (syntax->datum #'term))
+     #'0]
+    ;; exit condition: just append the exponent at the end
+    ;; of the term.
+    [(_ term n)
+     (and (number? (syntax->datum #'n))
+          (null? (syntax->datum #'term)))
+     #`(append term n)]
+    ;; constant.
+    [(_ n)
+     (number? (syntax->datum #'n))
+     #'n]
+    ;; symbol (linear case).
+    [(_ (s))
+     (symbol? (syntax->datum #'s))
+     #''s]
+    ;; linear case.
+    [(_ (n s))
+     (and (number? (syntax->datum #'n))
+          (symbol? (syntax->datum #'s)))
+     #''(n (^ s 1))]
+    ;; quadratic or higher power. Start the recursion.
+    [(_ (n s0 s1 ...))
+     (let* ([n-d (syntax->datum #'n)]
+            [s0-d (syntax->datum #'s0)]
+            [s1-d (syntax->datum #'(s1 ...))]
+            [s1-first (car s1-d)]
+            [s1-rest (cdr s1-d)])
+       (and (number? n-d)
+            (symbol? s0-d)
+            (symbol? s1-first)
+            (eq? s0-d s1-first)))
+     #'`(n (^ s0 ,(mult->expt (s1 ...) 1)))]
+    ;; Recursive case
+    [(_ (s0 s1 ...) n)
+     (let* ([s0-d (syntax->datum #'s0)]
+            [s1-d (syntax->datum #'(s1 ...))])
+       (null? s1-d))
+     #'(add1 n)]
+    [(_ (s0 s1 ...) n)
+     (let* ([s0-d (syntax->datum #'s0)]
+            [s1-d (syntax->datum #'(s1 ...))]
+            [s1-first (car s1-d)]
+            [s1-rest (cdr s1-d)])
+       (and (symbol? s0-d)
+            (symbol? s1-first)
+            (eq? s0-d s1-first)))
+     #'(mult->expt (s1 ...) (add1 n))]
+    [_ #'"unexpected syntax"]))
+
+
+(displayln (mult->expt ()))
+(displayln (mult->expt 5))
+(displayln (mult->expt (x)))
+(displayln (mult->expt (3 x)))
+;(displayln (mult->expt (x x)))
+(displayln (mult->expt (1 x x x)))
+(displayln (mult->expt (6 x x x x x x)))
 
 ;; TODO simplify expressions like (* ... 0 ...) -> #'0
 (define-syntax simplify
