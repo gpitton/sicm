@@ -82,36 +82,36 @@
 (define-syntax (reorder-term stx)
   (syntax-case stx ()
     ;; args is empty: just return t
-    [(_ op args t)
+    [(_ op args term)
      (null? (syntax->datum #'args))
-     (let ([term (syntax->datum #'t)])
-       (if (eq? (length term) 1)
-           #'(car 't)
-           #''t))]
+     (let ([term-d (syntax->datum #'term)])
+       (if (eq? (length term-d) 1)
+           #'(car 'term)
+           #''term))]
     ;; t is empty: initialise t
-    [(_ op args t)
-     (null? (syntax->datum #'t))
-     (let ([term (syntax->datum #'args)])
+    [(_ op args term)
+     (null? (syntax->datum #'term))
+     (let ([args-d (syntax->datum #'args)])
        (with-syntax ([args-tail
-                      (datum->syntax #'args (cdr term))]
+                      (datum->syntax #'args (cdr args-d))]
                      [args-head
-                      (datum->syntax #'args (list (car term)))])
+                      (datum->syntax #'args (list (car args-d)))])
          #'(reorder-term op args-tail args-head)))]
     ;; recursive case, next element is a number
-    [(_ op args t)
+    [(_ op args term)
      (and (number? (car (syntax->datum #'args)))
-          (number? (car (syntax->datum #'t))))
+          (number? (car (syntax->datum #'term))))
      (let* ([op-d (syntax->datum #'op)]
             [args-d (syntax->datum #'args)]
-            [term (syntax->datum #'t)])
+            [term-d (syntax->datum #'term)])
        (with-syntax ([args-tail
                       (datum->syntax #'args
                                      (cdr args-d))]
                      [args-add
                       (datum->syntax #'args
                                      (cons (eval `(,op-d ,(car args-d)
-                                                         ,(car term)))
-                                           (cdr term)))])
+                                                         ,(car term-d)))
+                                           (cdr term-d)))])
          #'(reorder-term op
                          args-tail
                          args-add)))]
@@ -131,18 +131,17 @@
                          args-tail
                          num-term)))]
     ;; recursive case, next element is a symbolic variable
-    [(_ op args t)
-     (let ([term (syntax->datum #'args)]
-           ;; reordered term
-           [r-term (syntax->datum #'t)])
+    [(_ op args term)
+     (let ([args-d (syntax->datum #'args)]
+           [term-d (syntax->datum #'term)])
        (with-syntax ([args-tail
-                      (datum->syntax #'args (cdr term))]
-                     [t-next
-                      (datum->syntax #'t (append r-term
-                                                 `(,(car term))))])
+                      (datum->syntax #'args (cdr args-d))]
+                     [next-term
+                      (datum->syntax #'term (append term-d
+                                                    `(,(car args-d))))])
          #'(reorder-term op
                          args-tail
-                         t-next)))]))
+                         next-term)))]))
 
 
 
