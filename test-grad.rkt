@@ -81,44 +81,24 @@
 ;;    (reorder-term op (1 2 x 3 x x) ()) -> (cons (op 1 2 3) (list x x x))
 ;; TODO this is not going to work well e.g. with (- 8 3 2) or (/ 8 3 2)
 (define-syntax (reorder-term stx)
-  (syntax-case stx ()
-    ;; args is empty: just return t
-    [(_ op () term)
-     (let ([term-d (syntax->datum #'term)])
-       (if (eq? (length term-d) 1)
-           #'(car 'term)
-           #''term))]
-    ;; t is empty: initialise t
-    [(_ op args ())
-     (let ([args-d (syntax->datum #'args)])
-       (with-syntax
-           ([args-tail
-             (datum->syntax #'args (cdr args-d))]
-            [args-head
-             (datum->syntax #'args (list (car args-d)))])
-         #'(reorder-term op args-tail args-head)))]
+  (syntax-parse stx
+    ;; args is empty: recursion has ended. Just return the reodered term.
+    [(_ op () (term:number)) #'term]  ;; number specialisation.
+    [(_ op () (term)) #''term]        ;; single variable specialisation.
+    [(_ op () term) #''term]          ;; general case.
+    ;; Initialise the recursion.
+    [(_ op (arg0 arg1 ...) ())
+     #'(reorder-term op (arg1 ...) (arg0))]
     ;; recursive case, next element is a number
-    [(_ op args term)
-     (and (number? (car (syntax->datum #'args)))
-          (number? (car (syntax->datum #'term))))
-     (let* ([op-d (syntax->datum #'op)]
-            [args-d (syntax->datum #'args)]
-            [term-d (syntax->datum #'term)])
-       (with-syntax
-           ([args-tail
-             (datum->syntax #'args
-                            (cdr args-d))]
-            [args-add
-             (datum->syntax #'args
-                            (cons (eval `(,op-d ,(car args-d)
-                                                ,(car term-d)))
-                                  (cdr term-d)))])
-         #'(reorder-term op
-                         args-tail
-                         args-add)))]
+    [(_ op (arg0:number arg1 ...) (term0:number term1 ...))
+     (let ([op-d (syntax->datum #'op)]
+           [arg0-d (syntax->datum #'arg0)]
+           [term0-d (syntax->datum #'term0)])
+       (with-syntax ([hd (datum->syntax #'term0 (eval `(,op-d ,arg0-d ,term0-d)))])
+         #'(reorder-term op (arg1 ...) (hd term1 ...))))]
     ;; recursive case, we need to add a number at the head of the term
     [(_ op args term)
-     (number? (car (syntax->datum #'args)))
+     #:when (number? (car (syntax->datum #'args)))
      (let ([args-d (syntax->datum #'args)]
            [term-d (syntax->datum #'term)])
        (with-syntax
