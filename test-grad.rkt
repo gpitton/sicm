@@ -24,8 +24,8 @@
     (raise-syntax-error #f "unexpected use of ^" stx)))
 
 (define-for-syntax (eq-sym? a b)
-  (let ([sa (syntax-e a)]
-        [sb (syntax-e b)])
+  (let ([sa (syntax->datum a)]
+        [sb (syntax->datum b)])
     (and (symbol? sa)
          (symbol? sb)
          (eq? sa sb))))
@@ -83,15 +83,13 @@
 (define-syntax (reorder-term stx)
   (syntax-case stx ()
     ;; args is empty: just return t
-    [(_ op args term)
-     (null? (syntax->datum #'args))
+    [(_ op () term)
      (let ([term-d (syntax->datum #'term)])
        (if (eq? (length term-d) 1)
            #'(car 'term)
            #''term))]
     ;; t is empty: initialise t
-    [(_ op args term)
-     (null? (syntax->datum #'term))
+    [(_ op args ())
      (let ([args-d (syntax->datum #'args)])
        (with-syntax
            ([args-tail
