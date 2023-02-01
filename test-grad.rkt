@@ -146,9 +146,6 @@
                          args-tail
                          next-term)))]))
 
-
-
-
 ;; simplifies a term, where a term is an S-expression in
 ;; the form: (op arg0 . args) -> (op natural? symbol)
 ;(define-syntax simpl-term
@@ -173,30 +170,24 @@
 ;; (n:number s0 s1 ...) -> `(n (^ s0 ,(m->e (s1 ...) 1)))
 ;; (s0 s1 ...) n:number -> (m->e (s1 ...) (add1 n))
 (define-syntax (mult->expt stx)
-  (syntax-case stx ()
+  (syntax-parse stx
     ;; Empty list: return 0.
     [(_ ()) #'0]
     ;; Constant.
-    [(_ n)
-     (number? (syntax->datum #'n))
-     #'n]
+    [(_ n:number) #'n]
     ;; Exit condition: just append the exponent at the end
     ;; of the term.
-    [(_ () n)
-     (number? (syntax->datum #'n))
-     #'n]
+    [(_ () n:number) #'n]
     ;; Leading coefficient is a number: start the recursion.
-    [(_ (n s0 s1 ...))
-     (number? (syntax->datum #'n))
+    [(_ (n:number s0 s1 ...))
      ;; TODO check that the symbols s0, s1, ... are equal?
      #'`(n (^ s0 ,(mult->expt (s1 ...) 1)))]
     ;; No leading coefficient: set it to 1 and retry.
     [(_ (s0 s1 ...))
-     (not (number? (syntax->datum #'s0)))
+     #:when (not (number? (syntax->datum #'s0)))
      #'(mult->expt (1 s0 s1 ...))]
     ;; Recursive case.
-    [(_ (s0 s1 ...) n)
-     (number? (syntax->datum #'n))
+    [(_ (s0 s1 ...) n:number)
      (with-syntax
          ([n1 (datum->syntax #'n (add1 (syntax->datum #'n)))])
        #'(mult->expt (s1 ...) n1))]
