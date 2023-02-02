@@ -61,6 +61,7 @@
 
 
 ;; Tests for the grad macro
+(displayln "grad")
 (displayln (grad 2 c))
 (displayln (grad x c))
 (displayln (grad c c))
@@ -82,44 +83,42 @@
 (define-syntax (reorder-term stx)
   (syntax-parse stx
     ;; args is empty: recursion has ended. Just return the reodered term.
-    [(_ op () (term:number)) #'term]  ;; number specialisation.
-    [(_ op () (term)) #''term]        ;; single variable specialisation.
-    [(_ op () term) #''term]          ;; general case.
-    ;; Initialise the recursion.
-    [(_ op (arg0 arg1 ...) ())
-     #'(reorder-term op (arg1 ...) (arg0))]
+    [(_ (op) (term:number)) #'term]  ;; number specialisation.
+    [(_ (op) (term)) #''term]        ;; single variable specialisation.
+    [(_ (op) term) #''term]          ;; general case.
+    ;; Term with a single element: just return the element.
+    [(_ (n:number)) #'n]
+    [(_ (s:id)) #''s]                ;; quote the symbol
+    ;; Proper term: initialise the recursion.
+    [(_ (op arg0 arg1 ...))
+     #'(reorder-term (op arg1 ...) (arg0))]
     ;; Recursive case, next element is a number, we can
     ;; perform op to update the head of term.
-    [(_ op (arg0:number arg1 ...) (term0:number term1 ...))
+    [(_ (op arg0:number arg1 ...) (term0:number term1 ...))
      (let ([op-d (syntax->datum #'op)]
            [arg0-d (syntax->datum #'arg0)]
            [term0-d (syntax->datum #'term0)])
        (with-syntax ([hd (datum->syntax #'term0
                                         (eval `(,op-d ,arg0-d ,term0-d)))])
-         #'(reorder-term op (arg1 ...) (hd term1 ...))))]
+         #'(reorder-term (op arg1 ...) (hd term1 ...))))]
     ;; Recursive case, the next element is the first time we see a number.
     ;; Insert it at the head of the term.
-    [(_ op (arg0:number arg1 ...) (t0 t1 ...))
-     #'(reorder-term op (arg1 ...) (arg0 t0 t1 ...))]
+    [(_ (op arg0:number arg1 ...) (t0 t1 ...))
+     #'(reorder-term (op arg1 ...) (arg0 t0 t1 ...))]
     ;; Recursive case, next element is a symbolic variable.
     ;; Append it at the end of terms.
-    [(_ op (arg0 arg1 ...) (t0 t1 ...))
-     #'(reorder-term op (arg1 ...) (t0 t1 ... arg0))]))
+    [(_ (op arg0 arg1 ...) (t0 t1 ...))
+     #'(reorder-term (op arg1 ...) (t0 t1 ... arg0))]))
 
-;; simplifies a term, where a term is an S-expression in
-;; the form: (op arg0 . args) -> (op natural? symbol)
-;(define-syntax simpl-term
-;  (syntax-rules (+)
-;    [(_ (+ . args)) `(+ ,@(reorder-term + args '()))]))
 
-(displayln (reorder-term + (1 2 3 4) ()))
-(displayln (reorder-term * (1 2 3 4) ()))
-(displayln (reorder-term + (c) ()))
-(displayln (reorder-term + (2 3 c 3) ()))
-(displayln (reorder-term + (c 2) ()))
-(displayln (reorder-term + (c c 8 c c 4 c 1 c c) ()))
-(displayln (reorder-term * (c c 8 c c 4 c 1 c c) ()))
-
+(displayln "reorder-term")
+(displayln (reorder-term (+ 1 2 3 4)))
+(displayln (reorder-term (* 1 2 3 4)))
+(displayln (reorder-term (c)))
+(displayln (reorder-term (+ 2 3 c 3)))
+(displayln (reorder-term (+ c 2)))
+(displayln (reorder-term (+ c c 8 c c 4 c 1 c c)))
+(displayln (reorder-term (* c c 8 c c 4 c 1 c c)))
 
 ;; simplifies a term in the form (4 x x x) -> (4 (^ x 3))
 ;; As it expands, mult->expt can have the following arguments:
@@ -154,6 +153,7 @@
     [_ #'"unexpected syntax"]))
 
 
+(displayln "mult->expt")
 (displayln (mult->expt ()))
 (displayln (mult->expt 5))
 (displayln (mult->expt (x)))
@@ -161,6 +161,28 @@
 (displayln (mult->expt (x x)))
 (displayln (mult->expt (1 x x x)))
 (displayln (mult->expt (6 x x x x x x)))
+
+
+;; Applies a macro f to each node in a (possibly nested)
+;; S-expression (interpreted as a tree here). This is a
+;; useful tool to simplify a polynomial expression by
+;; applying a term-reordering or a simplifying macro to
+;; each sub-expression.
+#|(define-syntax (map-tree stx)
+  (syntax-case stx ()
+    [(_ f ()) #'()]
+    [(_ f (ex)) #'(f ex)]
+    [(_ f (op ex0 ex1 ...))
+     (list? #'ex0)
+     #'(op (map-tree f ex0) (map-tree f ex1) ...)]
+    [(_ f (op ex0 ex1 ...))
+     #'`(op ,@(f (ex0 ex1 ...)))]))
+
+(displayln "map-tree")
+(displayln (map-tree mult->expt (+ c c)))
+;; 4x^3 + 2x*x^6 - 2
+(displayln (map-tree mult->expt (+ (* x 4 x x) (* 2 x (^ x 6)) -2)))
+|#
 
 ;; TODO simplify expressions like (* ... 0 ...) -> #'0
 (define-syntax simplify
