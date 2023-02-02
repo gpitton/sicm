@@ -57,8 +57,7 @@
     [(_ (* ex0 ex1 ...) v:id)
      #'`(+ (* ,(grad ex0 v) ex1 ...)
            (* ex0 ,(grad (* ex1 ...) v)))]
-    [_ #'"not matched"]  ;; later just return 0
-    ))
+    [_ #'"not matched"]))  ;; later just return 0
 
 
 ;; Tests for the grad macro
@@ -89,42 +88,23 @@
     ;; Initialise the recursion.
     [(_ op (arg0 arg1 ...) ())
      #'(reorder-term op (arg1 ...) (arg0))]
-    ;; recursive case, next element is a number
+    ;; Recursive case, next element is a number, we can
+    ;; perform op to update the head of term.
     [(_ op (arg0:number arg1 ...) (term0:number term1 ...))
      (let ([op-d (syntax->datum #'op)]
            [arg0-d (syntax->datum #'arg0)]
            [term0-d (syntax->datum #'term0)])
-       (with-syntax ([hd (datum->syntax #'term0 (eval `(,op-d ,arg0-d ,term0-d)))])
+       (with-syntax ([hd (datum->syntax #'term0
+                                        (eval `(,op-d ,arg0-d ,term0-d)))])
          #'(reorder-term op (arg1 ...) (hd term1 ...))))]
-    ;; recursive case, we need to add a number at the head of the term
-    [(_ op args term)
-     #:when (number? (car (syntax->datum #'args)))
-     (let ([args-d (syntax->datum #'args)]
-           [term-d (syntax->datum #'term)])
-       (with-syntax
-           ([args-tail
-             (datum->syntax #'args
-                            (cdr args-d))]
-            [num-term
-             (datum->syntax #'args
-                            (cons (car args-d)
-                                  term-d))])
-         #'(reorder-term op
-                         args-tail
-                         num-term)))]
-    ;; recursive case, next element is a symbolic variable
-    [(_ op args term)
-     (let ([args-d (syntax->datum #'args)]
-           [term-d (syntax->datum #'term)])
-       (with-syntax
-           ([args-tail
-             (datum->syntax #'args (cdr args-d))]
-            [next-term
-             (datum->syntax #'term (append term-d
-                                           `(,(car args-d))))])
-         #'(reorder-term op
-                         args-tail
-                         next-term)))]))
+    ;; Recursive case, the next element is the first time we see a number.
+    ;; Insert it at the head of the term.
+    [(_ op (arg0:number arg1 ...) (t0 t1 ...))
+     #'(reorder-term op (arg1 ...) (arg0 t0 t1 ...))]
+    ;; Recursive case, next element is a symbolic variable.
+    ;; Append it at the end of terms.
+    [(_ op (arg0 arg1 ...) (t0 t1 ...))
+     #'(reorder-term op (arg1 ...) (t0 t1 ... arg0))]))
 
 ;; simplifies a term, where a term is an S-expression in
 ;; the form: (op arg0 . args) -> (op natural? symbol)
@@ -137,8 +117,8 @@
 (displayln (reorder-term + (c) ()))
 (displayln (reorder-term + (2 3 c 3) ()))
 (displayln (reorder-term + (c 2) ()))
-(displayln (reorder-term + (c 8 c c 4 c 1 c c) ()))
-(displayln (reorder-term * (c 8 c c 4 c 1 c c) ()))
+(displayln (reorder-term + (c c 8 c c 4 c 1 c c) ()))
+(displayln (reorder-term * (c c 8 c c 4 c 1 c c) ()))
 
 
 ;; simplifies a term in the form (4 x x x) -> (4 (^ x 3))
