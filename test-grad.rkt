@@ -175,6 +175,10 @@
   (syntax-case stx ()
     ;; Empty tree. End of recursion.
     [(_ f ()) #''()]
+    ;; List with a single element. Nothing to do.
+    [(_ f (s))
+     (not (list? #'s))
+     #''(s)]
     ;; No element of ex is a list. We can just apply f.
     [(_ f ex)
      (andmap notlist? (syntax->datum #'ex))
@@ -206,6 +210,7 @@
 (displayln (map-tree reorder-term (x)))
 (displayln (map-tree reorder-term (+ x 2)))
 (displayln (map-tree reorder-term (+ 2 c 3)))
+(displayln (map-tree reorder-term (+ 6 (* 5 4) (+ 2 3) 1)))
 (displayln (map-tree reorder-term (+ (+ 2 3) (+ 3 x x 6))))
 ;; 4x^3 + 2x*x^6 - 2
 (displayln (map-tree reorder-term (+ (* x 4 x x) (* 2 x (^ x 6)) -2)))
