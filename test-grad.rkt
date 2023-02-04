@@ -101,8 +101,7 @@
      (let ([op-d (syntax->datum #'op)]
            [arg0-d (syntax->datum #'arg0)]
            [term0-d (syntax->datum #'term0)])
-       (with-syntax ([hd (datum->syntax #'term0
-                                        (eval `(,op-d ,arg0-d ,term0-d)))])
+       (with-syntax ([hd (eval `(,op-d ,arg0-d ,term0-d))])
          #'(reorder-term (op arg1 ...) (hd term1 ...))))]
     ;; Recursive case, the next element is the first time we see a number.
     ;; Insert it at the head of the term.
@@ -152,7 +151,7 @@
     ;; Recursive case.
     [(_ (s0 s1 ...) n:number)
      (with-syntax
-         ([n1 (datum->syntax #'n (add1 (syntax->datum #'n)))])
+         ([n1 (add1 (syntax->datum #'n))])
        #'(mult->expt (s1 ...) n1))]
     [_ #'"unexpected syntax"]))
 
