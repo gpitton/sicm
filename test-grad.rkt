@@ -177,7 +177,7 @@
     [(_ f ()) #''()]
     ;; List with a single element. Nothing to do.
     [(_ f (s))
-     (not (list? #'s))
+     (not (list? (syntax->datum #'s)))
      #''(s)]
     ;; No element of ex is a list. We can just apply f.
     [(_ f ex)
