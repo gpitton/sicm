@@ -3,6 +3,7 @@
 (require (for-syntax syntax/parse
                      racket/syntax))
 
+
 ;; Test: automatic differentiation for polynomial expressions
 
 ;(define poly-1
@@ -77,12 +78,12 @@
 
 ;; helper to reorder the term symbols at compile-time.
 ;; expected behaviour:
-;;    (reorder-term op (1 2 3) ()) -> (cons (op 1 2 3) '())
-;;    (reorder-term op (1 2 x 3 x x) ()) -> (cons (op 1 2 3) (list x x x))
-;; TODO this is not going to work well e.g. with (- 8 3 2) or (/ 8 3 2)
+;;    (reorder-term (op 1 2 3) ()) -> (cons (op 1 2 3) '())
+;;    (reorder-term (op 1 2 x 3 x x) ()) -> (cons (op 1 2 3) (list x x x))
+;; TODO this is not going to work well e.g. with (- 8 3 2)
 (define-syntax (reorder-term stx)
   (syntax-parse stx
-    ;; args is empty: recursion has ended. Just return the reodered term.
+    ;; recursion has ended. Just return the reodered term.
     [(_ (op) (term:number)) #'term]  ;; number specialisation.
     [(_ (op) (term)) #''term]        ;; single variable specialisation.
     [(_ (op) (term ...))             ;; general case.
