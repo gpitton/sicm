@@ -1,6 +1,6 @@
 #lang racket
 
-(provide grad reorder-term mult->expt)
+(provide grad reorder-term mult->expt simpl-zmul)
 
 ;; Helper functions for the algorithmic differentiation of polynomial expressions
 
@@ -78,7 +78,7 @@
   (rt-aux t '()))
 
 
-;; simplifies a term in the form (4 x x x) -> (4 (^ x 3))
+;; mult->expt rewrites a term in the form (4 x x x) to (4 (^ x 3)).
 ;; As it expands, mult->expt can have the following arguments:
 ;; () -> 0
 ;; n:number -> n
@@ -113,70 +113,43 @@
     [else (me-aux term 0)]))
 
 
-#|(define-for-syntax (notlist? x) (not (list? x)))
+(define (numzero? x) (and (number? x) (zero? x)))
 
-;; Applies a macro f to each node in a (possibly nested) S-expression
-;; (interpreted as a tree here). This is a useful tool to simplify a
-;; polynomial expression by applying a term-reordering or a simplifying
-;; macro to each sub-expression.
-(define-syntax (map-tree stx)
-  (syntax-case stx ()
-    ;; Empty tree. End of recursion.
-    [(_ f ()) #''()]
-    ;; List with a single element. Nothing to do.
-    [(_ f (s))
-     (not (list? (syntax->datum #'s)))
-     #''(s)]
-    ;; No element of ex is a list. We can just apply f.
-    [(_ f ex)
-     (andmap notlist? (syntax->datum #'ex))
-     #'(f ex)]
-    ;; (operand list ...) -> (op (recur list) (recur ...))
-    [(_ f (op ex0 ex1 ...))
-     (and (member (syntax->datum #'op) '(+ - * ^))
-          (list? (syntax->datum #'ex0)))
-     #'`(op ,(map-tree f ex0) ,@(map-tree f (ex1 ...)))]
-    ;; (operand symbol ...) -> (op symbol (recur ...))
-    [(_ f (op ex0 ex1 ...))
-     (member (syntax->datum #'op) '(+ - * ^))
-     #'`(op ex0 ,@(map-tree f (ex1 ...)))]
-    ;; Tree that does not start with an operator. This is the recursive
-    ;; case started by one of the two steps above.
-    ;; (list ...) -> ((recur list) (recur ...))
-    [(_ f (ex0 ex1 ...))
-     (list? (syntax->datum #'ex0))
-     #'`(,(map-tree f ex0) ,@(map-tree f (ex1 ...)))]
-    ;; Tree that does not start with an operator. This is also a recursive
-    ;; step, like the one above.
-    ;; (symbol ...) -> (symbol (recur ...))
-    [(_ f (ex0 ex1 ...))
-     #'`(ex0 ,@(map-tree f (ex1 ...)))]
-    [_ #'"unexpected syntax"]))
-
-(displayln "map-tree -----------------------------------------------------------")
-(displayln (map-tree reorder-term (2)))
-(displayln (map-tree reorder-term (x)))
-(displayln (map-tree reorder-term (+ 'x 2)))
-(displayln (map-tree reorder-term (+ 2 'c 3)))
-(displayln (map-tree reorder-term (+ 6 (* 5 4) (+ 2 3) 1)))
-(displayln (map-tree reorder-term (+ (+ 2 3) (+ 3 'x 'x 6))))
-;; 4x^3 + 2x*x^6 - 2
-;(displayln (map-tree reorder-term (+ (* x 4 x x) (* 2 x (^ x 6)) -2)))
-;(displayln (map-tree reorder-term (+ (* x x) (+ 2 x (+ 3 (* 4 x x 2 x))))))
-
-
-;; TODO simplify expressions like (* ... 0 ...) -> #'0
-(define-syntax simplify
-  (syntax-rules ()
-    [(_ ex) ex]))
-
-
-(define-syntax D
-  (syntax-rules ()
-    [(_ ex var)
-     (simplify (grad ex var))]))
+;; simpl-zmul simplifies an expression that has a multiplication
+;; by zero. Example: (+ 2 (* 3 (^ x 2) 0)) -> (+ 2 0)
+(define (simpl-zmul expr)
+  ;; The helper function accepts an expression and a continuation.
+  (define (sz-aux ex)
+    (lambda (k)
+      (cond [(null? ex) '()]
+            [(number? ex)
+             (if (zero? ex) (k 0) ex)]
+            [(symbol? ex) ex]
+            ;; expr is a multiplication, and one of the sub-expressions
+            ;; is zero. The expression will evaluate to with zero.
+            [(and (eq? (car ex) '*)
+                  (ormap numzero? (cdr ex)))
+             (k 0)]
+            ;; expr is a multiplication, and we need to keep recurring.
+            [(eq? (car ex) '*)
+             (call/cc
+              (lambda (k2)
+                (let ([res
+                       (map (lambda (e) ((sz-aux e) k2))
+                            (cdr ex))])
+                  (if (numzero? res)
+                      (k 0)  ;; Propagate up.
+                      `(* ,@res)))))]
+            ;; Regardless of whether expr is a multiplication, we need
+            ;; to recur.
+            [else
+             (let ([res
+                    (map (lambda (e) ((sz-aux e) k))
+                         (cdr ex))])
+               `(,(car ex) ,@res))])))
+  ;; Launch.
+  (call/cc (sz-aux expr)))
 
 
 ;; TODO we need a normal-form macro to rewrite a monomial
 ;;      in a form like: (* x y x) -> (* (expt x 2) y)
-|#
