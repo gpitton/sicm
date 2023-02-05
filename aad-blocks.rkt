@@ -50,20 +50,6 @@
                    exs))])]))
 
 
-(displayln "grad ---------------------------------------------------------------")
-(displayln (grad 2 'c))
-(displayln (grad 'x 'c))
-(displayln (grad 'c 'c))
-(displayln (grad '(+ c 2) 'c))
-(displayln (grad '(+ c c) 'c))
-(displayln (grad '(+ c c c c c 5) 'c))
-(displayln (grad '(* c c c c c 5) 'c))
-(displayln (grad '(+ (+ c c c) c 2) 'c))
-(displayln (grad '(^ c 1) 'c))
-(displayln (grad '(^ c 5) 'c))
-(displayln (grad '(+ (* 4 x x x) (* 2 x (^ x 6)) -2) 'x))
-(displayln (grad '(+ (* 5 b (^ x 2)) (* 2 c x) -2) 'x))
-
 ;; helper to reorder the term symbols at compile-time.
 ;; expected behaviour:
 ;;    (reorder-term op (1 2 3) ()) -> (cons (op 1 2 3) '())
