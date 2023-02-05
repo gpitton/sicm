@@ -1,8 +1,5 @@
 #lang racket
 
-(require (for-syntax syntax/parse
-                     racket/syntax))
-
 (provide grad reorder-term mult->expt)
 
 ;; Helper functions for the algorithmic differentiation of polynomial expressions
@@ -81,17 +78,6 @@
   (rt-aux t '()))
 
 
-(displayln "reorder-term -------------------------------------------------------")
-(displayln (reorder-term + '(1 2 3 4)))
-(displayln (reorder-term * '(1 2 3 4)))
-(displayln (reorder-term + '(c)))
-;(displayln (reorder-term ((2))))  ;; this should fail
-(displayln (reorder-term + '(2 3 c 3)))
-(displayln (reorder-term + '(c 2)))
-(displayln (reorder-term + '(c c 8 c c 4 c 1 c c)))
-(displayln (reorder-term * '(c c 8 c c 4 c 1 c c)))
-
-
 ;; simplifies a term in the form (4 x x x) -> (4 (^ x 3))
 ;; As it expands, mult->expt can have the following arguments:
 ;; () -> 0
@@ -126,15 +112,6 @@
     ;; Start the recursion.
     [else (me-aux term 0)]))
 
-
-(displayln "mult->expt ---------------------------------------------------------")
-(displayln (mult->expt '()))
-(displayln (mult->expt 5))
-(displayln (mult->expt '(x)))
-(displayln (mult->expt '(3 x)))
-(displayln (mult->expt '(x x)))
-(displayln (mult->expt '(1 x x x)))
-(displayln (mult->expt '(6 x x x x x x)))
 
 #|(define-for-syntax (notlist? x) (not (list? x)))
 

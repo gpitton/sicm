@@ -39,6 +39,27 @@
                            '(+ (+ (* 0 (b (^ x 2))) (* 0 (5 (^ x 2)))
                                   (* (* 2 (^ x 1)) (5 b)))
                                (+ (+ (* 0 (c x)) (* 0 (2 x)) (* 1 (2 c))) (+ 0 0))))
+             )
+  (test-case "reorder-term"
+             (check-equal? (reorder-term + '(1 2 3 4)) '(10))
+             (check-equal? (reorder-term * '(1 2 3 4)) '(24))
+             (check-equal? (reorder-term + '(c)) '(c))
+             (check-equal? (reorder-term + '((2))) '((2)))  ;; TODO check this
+             (check-equal? (reorder-term + '(2 3 c 3)) '(8 c))
+             (check-equal? (reorder-term + '(c 2)) '(2 c))
+             (check-equal? (reorder-term + '(c c 8 c c 4 c 1 c c))
+                           '(13 c c c c c c c))
+             (check-equal? (reorder-term * '(c c 8 c c 4 c 1 c c))
+                           '(32 c c c c c c c))
+             )
+  (test-case "mult->expt"
+             (check-equal? (mult->expt '()) 0)
+             (check-equal? (mult->expt 5) 5)
+             (check-equal? (mult->expt '(x)) '(1 (^ x 1)))
+             (check-equal? (mult->expt '(3 x)) '(3 (^ x 1)))
+             (check-equal? (mult->expt '(x x)) '(1 (^ x 2)))
+             (check-equal? (mult->expt '(1 x x x)) '(1 (^ x 3)))
+             (check-equal? (mult->expt '(6 x x x x x x)) '(6 (^ x 6)))
              ))
 
 (run-tests aad-helpers)
