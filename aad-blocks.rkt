@@ -122,8 +122,7 @@
   (define (sz-aux ex)
     (lambda (k)
       (cond [(null? ex) '()]
-            [(number? ex)
-             (if (zero? ex) (k 0) ex)]
+            [(number? ex) ex]
             [(symbol? ex) ex]
             ;; expr is a multiplication, and one of the sub-expressions
             ;; is zero. The expression will evaluate to with zero.

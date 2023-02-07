@@ -66,7 +66,9 @@
              (check-equal? (simpl-zmul '(+ (* 2 3 (+ 1 1)) (* 4 (* 1 0) 5)))
                            '(+ (* 2 3 (+ 1 1)) 0))
              (check-equal? (simpl-zmul '(+ (* 2 4 (^ x 4) (* (+ 1 2) 0)) 2))
-                           '(+ 0 2)))
+                           '(+ 0 2))
+             (check-equal? (simpl-zmul '(+ (+ 2 3 (+ 1 0)) (* 2 (+ 1 1 0))))
+                                       '(+ (+ 2 3 (+ 1 0)) (* 2 (+ 1 1 0)))))
   )
 
 (run-tests aad-helpers)
