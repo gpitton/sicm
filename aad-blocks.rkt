@@ -118,8 +118,10 @@
 ;; simpl-zmul simplifies an expression that has a multiplication
 ;; by zero. Example: (+ 2 (* 3 (^ x 2) 0)) -> (+ 2 0)
 (define (simpl-zmul expr)
-  ;; The helper function accepts an expression and a continuation.
-  (define (sz-aux ex)
+  ;; The helper function accepts an expression, a boolean that is
+  ;; true if we are in the context of a multiplication, and returns
+  ;; a lambda accepting a continuation.
+  (define (sz-aux ex is-in-mult)
     (lambda (k)
       (cond [(null? ex) '()]
             [(number? ex) ex]
@@ -128,26 +130,27 @@
             ;; is zero. The expression will evaluate to with zero.
             [(and (eq? (car ex) '*)
                   (ormap numzero? (cdr ex)))
-             (k 0)]
+             (if is-in-mult
+                 (k 0)  ;; propagate up to the multiplication context
+                 ;; that we found a zero.
+                 0)]    ;; else just return zero and keep recurring.
             ;; expr is a multiplication, and we need to keep recurring.
             [(eq? (car ex) '*)
              (call/cc
               (lambda (k2)
                 (let ([res
-                       (map (lambda (e) ((sz-aux e) k2))
+                       (map (lambda (e) ((sz-aux e #t) k2))
                             (cdr ex))])
-                  (if (numzero? res)
-                      (k 0)  ;; Propagate up.
-                      `(* ,@res)))))]
+                  `(* ,@res))))]
             ;; Regardless of whether expr is a multiplication, we need
             ;; to recur.
             [else
              (let ([res
-                    (map (lambda (e) ((sz-aux e) k))
+                    (map (lambda (e) ((sz-aux e is-in-mult) k))
                          (cdr ex))])
                `(,(car ex) ,@res))])))
-  ;; Launch.
-  (call/cc (sz-aux expr)))
+  ;; Launch the helper function.
+  (call/cc (sz-aux expr #f)))
 
 
 ;; TODO we need a normal-form macro to rewrite a monomial
