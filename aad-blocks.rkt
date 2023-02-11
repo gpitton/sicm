@@ -156,6 +156,7 @@
 
 (define (not-list? x) (not (list? x)))
 (define (one? x) (eq? x 1))
+(define (num-one? x) (and (number? x) (one? x)))
 (define (not-one? x) (or (not (number? x))
                          (not (one? x))))
 ;; simpl-1mul simplifies an expression by removing any factors
@@ -164,12 +165,16 @@
   (cond [(null? expr) '()]
         [(not-list? expr) expr]
         [(eq? (car expr) '*)
-         (let ([s-expr
-                ;; recursively apply simpl-1mul...
-                (map simpl-1mul (cdr expr))])
-           ;; ... then keep only the sub-expressions that did
-           ;; not return one.
-           `(* ,@(filter not-one? s-expr)))]
+         (let* ([s-expr
+                 ;; recursively apply simpl-1mul...
+                 (map simpl-1mul (cdr expr))]
+                ;; ... then keep only the sub-expressions that did
+                ;; not return one.
+                [not1-expr `(* ,@(filter not-one? s-expr))]
+                [all-one (andmap num-one? (cdr not1-expr))])
+           ;; If all the sub-terms of not1-expr are 1, just
+           ;; return 1.
+           (if all-one 1 not1-expr))]
         [else
          ;; recursively apply to each term of the expression.
          (map simpl-1mul expr)]))
@@ -183,12 +188,16 @@
   (cond [(null? expr) '()]
         [(not-list? expr) expr]
         [(eq? (car expr) '+)
-         (let ([s-expr
-                ;; recursively apply simpl-zadd...
-                (map simpl-zadd (cdr expr))])
-           ;; ... then keep only the sub-expressions that did
-           ;; not return zero.
-           `(+ ,@(filter not-zero? s-expr)))]
+         (let* ([s-expr
+                 ;; recursively apply simpl-zadd...
+                 (map simpl-zadd (cdr expr))]
+                ;; ... then keep only the sub-expressions that did
+                ;; not return zero.
+                [nnz-expr `(+ ,@(filter not-zero? s-expr))]
+                [all-zero (andmap num-zero? (cdr nnz-expr))])
+           ;; If all the subterms of nnz-expr are zero, just
+           ;; return zero.
+           (if all-zero 0 nnz-expr))]
         [else
          ;; recursively apply to each term of the expression.
          (map simpl-zadd expr)]))

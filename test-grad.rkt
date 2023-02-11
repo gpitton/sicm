@@ -77,12 +77,16 @@
              (check-equal? (simpl-1mul '(* 1 (* 2 3 1) 4 1)) '(* (* 2 3) 4))
              (check-equal? (simpl-1mul '(* x (+ 3 (* x 1 3) 2) 1))
                            '(* x (+ 3 (* x 3) 2)))
-             (check-equal? (simpl-1mul '(1 (^ x 3))) '(1 (^ x 3))))
+             (check-equal? (simpl-1mul '(1 (^ x 3))) '(1 (^ x 3)))
+             (check-equal? (simpl-1mul '(* 1 1)) 1)
+             (check-equal? (simpl-1mul '(* 1 1 (* 1 1) 1)) 1))
   (test-case "simplify summations with zero"
              (check-equal? (simpl-zadd '()) '())
              (check-equal? (simpl-zadd '(+ 0 1 2 3)) '(+ 1 2 3))
              (check-equal? (simpl-zadd '(+ 0 (* x 2 0) (+ 2 3 0) 1 0))
-                           '(+ (* x 2 0) (+ 2 3) 1)))
+                           '(+ (* x 2 0) (+ 2 3) 1))
+             (check-equal? (simpl-zadd '(+ 0 0)) 0)
+             (check-equal? (simpl-zadd '(+ 0 0 (+ 0 0))) 0))
   )
 
 (run-tests aad-helpers)
