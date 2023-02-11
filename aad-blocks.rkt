@@ -222,8 +222,9 @@
               (list? (car expr)))
          (simpl-nesting (car expr))]
         [(member (car expr) '(+ *))
-         (if (one? (length (cdr expr)))
-             ;; we can remove one level of nesting.
+         (if (null? (cddr expr))
+             ;; List with an operator + or * followed by a single element.
+             ;; We can remove one level of nesting.
              (simpl-nesting (cdr expr))
              ;; else recur. We need to apply this simplification action
              ;; to each term of (cdr expr).
