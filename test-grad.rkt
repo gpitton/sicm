@@ -10,7 +10,7 @@
     (lambda (expr) (eval expr ns))))
 
 (define-test-suite aad-helpers
-  (test-case "grad"
+  (test-case "algorithmic differentiation"
              (check-equal? (grad 2 'c) 0)
              (check-equal? (grad 'x 'c) 0)
              (check-equal? (grad 'c 'c) 1)
@@ -50,7 +50,7 @@
                            '(13 c c c c c c c))
              (check-equal? (reorder-term * '(c c 8 c c 4 c 1 c c))
                            '(32 c c c c c c c)))
-  (test-case "mult->expt"
+  (test-case "convert a multiplication to exponential notation"
              (check-equal? (mult->expt '()) 0)
              (check-equal? (mult->expt 5) 5)
              (check-equal? (mult->expt '(x)) '(1 (^ x 1)))
@@ -58,7 +58,7 @@
              (check-equal? (mult->expt '(x x)) '(1 (^ x 2)))
              (check-equal? (mult->expt '(1 x x x)) '(1 (^ x 3)))
              (check-equal? (mult->expt '(6 x x x x x x)) '(6 (^ x 6))))
-  (test-case "simpl-zmul"
+  (test-case "simplify multiplication by zero"
              (check-equal? (simpl-zmul '()) '())
              (check-equal? (simpl-zmul '(+ 2 3)) '(+ 2 3))
              (check-equal? (simpl-zmul '(* 1 2)) '(* 1 2))
@@ -70,7 +70,14 @@
              (check-equal? (simpl-zmul '(+ (* 1 (c c c c 5)) (* 0 (c c c c c))))
                            '(+ (* 1 (c c c c 5)) 0))
              (check-equal? (simpl-zmul '(+ (+ 2 3 (+ 1 0)) (* 2 (+ 1 1 0))))
-                                       '(+ (+ 2 3 (+ 1 0)) (* 2 (+ 1 1 0)))))
+                           '(+ (+ 2 3 (+ 1 0)) (* 2 (+ 1 1 0)))))
+  (test-case "simplify multiplication by one"
+             (check-equal? (simpl-1mul '()) '())
+             (check-equal? (simpl-1mul '(* 1 2 3)) '(* 2 3))
+             (check-equal? (simpl-1mul '(* 1 (* 2 3 1) 4 1)) '(* (* 2 3) 4))
+             (check-equal? (simpl-1mul '(* x (+ 3 (* x 1 3) 2) 1))
+                           '(* x (+ 3 (* x 3) 2)))
+             (check-equal? (simpl-1mul '(1 (^ x 3))) '(1 (^ x 3))))
   )
 
 (run-tests aad-helpers)

@@ -1,6 +1,6 @@
 #lang racket
 
-(provide grad reorder-term mult->expt simpl-zmul)
+(provide grad reorder-term mult->expt simpl-zmul simpl-1mul)
 
 ;; Helper functions for the algorithmic differentiation of polynomial expressions
 
@@ -113,7 +113,7 @@
     [else (me-aux term 0)]))
 
 
-(define (numzero? x) (and (number? x) (zero? x)))
+(define (num-zero? x) (and (number? x) (zero? x)))
 
 ;; simpl-zmul simplifies an expression that has a multiplication
 ;; by zero. Example: (+ 2 (* 3 (^ x 2) 0)) -> (+ 2 0)
@@ -129,7 +129,7 @@
             ;; expr is a multiplication, and one of the sub-expressions
             ;; is zero. The expression will evaluate to with zero.
             [(and (eq? (car ex) '*)
-                  (ormap numzero? (cdr ex)))
+                  (ormap num-zero? (cdr ex)))
              (if is-in-mult
                  (k 0)  ;; propagate up to the multiplication context
                  ;; that we found a zero.
@@ -151,6 +151,27 @@
                `(,(car ex) ,@res))])))
   ;; Launch the helper function.
   (call/cc (sz-aux expr #f)))
+
+
+(define (not-list? x) (not (list? x)))
+(define (one? x) (eq? x 1))
+(define (not-one? x) (or (not (number? x))
+                         (not (one? x))))
+;; simpl-1mul simplifies an expression by removing any factors
+;; equal to 1 in a multiplication expression.
+(define (simpl-1mul expr)
+  (cond [(null? expr) '()]
+        [(not-list? expr) expr]
+        [(eq? (car expr) '*)
+         (let ([s-expr
+                ;; recursively apply simpl-1mul...
+                (map simpl-1mul (cdr expr))])
+           ;; ... then keep only the sub-expressions that did
+           ;; not evaluate to one.
+           `(* ,@(filter not-one? s-expr)))]
+        [else
+         ;; recursively apply to each term of the expression.
+         (map simpl-1mul expr)]))
 
 
 ;; TODO we need a normal-form macro to rewrite a monomial
