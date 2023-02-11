@@ -1,6 +1,7 @@
 #lang racket
 
-(provide grad reorder-term mult->expt simpl-zmul simpl-1mul)
+(provide grad reorder-term mult->expt simpl-zmul simpl-1mul
+         simpl-zadd)
 
 ;; Helper functions for the algorithmic differentiation of polynomial expressions
 
@@ -167,12 +168,30 @@
                 ;; recursively apply simpl-1mul...
                 (map simpl-1mul (cdr expr))])
            ;; ... then keep only the sub-expressions that did
-           ;; not evaluate to one.
+           ;; not return one.
            `(* ,@(filter not-one? s-expr)))]
         [else
          ;; recursively apply to each term of the expression.
          (map simpl-1mul expr)]))
 
+
+(define (not-zero? x) (or (not (number? x))
+                          (not (zero? x))))
+;;simpl-zadd simplifies an expression by removing any zeroes
+;; in a summation expression.
+(define (simpl-zadd expr)
+  (cond [(null? expr) '()]
+        [(not-list? expr) expr]
+        [(eq? (car expr) '+)
+         (let ([s-expr
+                ;; recursively apply simpl-zadd...
+                (map simpl-zadd (cdr expr))])
+           ;; ... then keep only the sub-expressions that did
+           ;; not return zero.
+           `(+ ,@(filter not-zero? s-expr)))]
+        [else
+         ;; recursively apply to each term of the expression.
+         (map simpl-zadd expr)]))
 
 ;; TODO we need a normal-form macro to rewrite a monomial
 ;;      in a form like: (* x y x) -> (* (expt x 2) y)
