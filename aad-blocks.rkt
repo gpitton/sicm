@@ -44,7 +44,7 @@
        [(list-rest '* exs)
         `(+ ,@(map (lambda (ex)
                      (let ([rest (remove ex exs)])
-                       `(* ,(grad ex var) ,rest)))
+                       `(* ,(grad ex var) ,@rest)))
                    exs))])]))
 
 
