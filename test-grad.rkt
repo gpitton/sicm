@@ -94,6 +94,11 @@
                            '(+ (* x 2 0) (+ 2 3) 1))
              (check-equal? (simpl-zadd '(+ 0 0)) 0)
              (check-equal? (simpl-zadd '(+ 0 0 (+ 0 0))) 0))
+  (test-case "simplify terms with deeper nesting than necessary"
+             (check-equal? (simpl-nesting '(+ (+ 1))) 1)
+             (check-equal? (simpl-nesting '(+ (+ (* 2 3)))) '(* 2 3))
+             (check-equal? (simpl-nesting '(+ (+ (* (* 2 (^ x 1)) 5 b)) (+ (+ (* 2 c)))))
+                           '(+ (* (* 2 (^ x 1)) 5 b) (* 2 c))))
   )
 
 (run-tests aad-helpers)

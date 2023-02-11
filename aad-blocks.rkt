@@ -1,7 +1,7 @@
 #lang racket
 
 (provide grad reorder-term mult->expt simpl-zmul simpl-1mul
-         simpl-zadd)
+         simpl-zadd simpl-nesting)
 
 ;; Helper functions for the algorithmic differentiation of polynomial expressions
 
@@ -201,6 +201,36 @@
         [else
          ;; recursively apply to each term of the expression.
          (map simpl-zadd expr)]))
+
+
+;; simpl-single fixes the nesting level for an expression where:
+;; - there is a single operand after an operator + or *. For example:
+;;   (simpl-nesting '(+ 2 (+ x))) -> '(+ 2 x)
+;; - there is an unnecessary nesting of a list within a list,
+;;   for example: (simpl-nesting '((+ 2 3)) -> '(+ 2 3)
+(define (simpl-nesting expr)
+  (cond [(null? expr) '()]
+        [(not-list? expr) expr]
+        ;; list with a single number or symbol. Remove one layer of nesting
+        ;; and recur. TODO maybe this needs to be redefined in its own function.
+        [(and (null? (cdr expr))
+              (not-list? (car expr)))
+         (car expr)]
+        ;; list within a list. TODO maybe this needs to be redefined in its
+        ;; own function.
+        [(and (null? (cdr expr))
+              (list? (car expr)))
+         (simpl-nesting (car expr))]
+        [(member (car expr) '(+ *))
+         (if (one? (length (cdr expr)))
+             ;; we can remove one level of nesting.
+             (simpl-nesting (cdr expr))
+             ;; else recur. We need to apply this simplification action
+             ;; to each term of (cdr expr).
+             `(,(car expr) ,@(map simpl-nesting (cdr expr))))]
+        [else ;; recur
+         (map simpl-nesting expr)]))
+
 
 ;; TODO we need a normal-form macro to rewrite a monomial
 ;;      in a form like: (* x y x) -> (* (expt x 2) y)
