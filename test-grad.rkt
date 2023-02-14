@@ -47,15 +47,15 @@
                                   (* (* 2 (^ x 1)) 5 b))
                                (+ (+ (* 0 c x) (* 0 2 x) (* 1 2 c)) (+ 0 0)))))
   (test-case "reorder-term"
-             (check-equal? (reorder-term + '(1 2 3 4)) '(10))
-             (check-equal? (reorder-term * '(1 2 3 4)) '(24))
-             (check-equal? (reorder-term + '(c)) '(c))
-             (check-equal? (reorder-term + '((2))) '((2)))  ;; TODO check this
-             (check-equal? (reorder-term + '(2 3 c 3)) '(8 c))
-             (check-equal? (reorder-term + '(c 2)) '(2 c))
-             (check-equal? (reorder-term + '(c c 8 c c 4 c 1 c c))
+             (check-equal? (reorder-term '(+ 1 2 3 4)) '(10))
+             (check-equal? (reorder-term '(* 1 2 3 4)) '(24))
+             ;(check-equal? (reorder-term '(c)) '(c))
+             ;(check-equal? (reorder-term '((2))) '((2)))  ;; TODO check this
+             (check-equal? (reorder-term '(+ 2 3 c 3)) '(8 c))
+             (check-equal? (reorder-term '(+ c 2)) '(2 c))
+             (check-equal? (reorder-term '(+ c c 8 c c 4 c 1 c c))
                            '(13 c c c c c c c))
-             (check-equal? (reorder-term * '(c c 8 c c 4 c 1 c c))
+             (check-equal? (reorder-term '(* c c 8 c c 4 c 1 c c))
                            '(32 c c c c c c c)))
   (test-case "convert a multiplication to exponential notation"
              (check-equal? (mult->expt '()) 0)

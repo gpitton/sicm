@@ -10,6 +10,11 @@
 ;  (lambda (stx)
 ;    (raise-syntax-error #f "unexpected use of ^" stx)))
 
+;; Required to use eval (racket-only).
+(define l-eval    ;; stands for local-eval
+  (let ([ns (make-base-namespace)])
+    (lambda (expr) (eval expr ns))))
+
 
 (define (eq-sym? a b)
   (and (symbol? a)
@@ -50,33 +55,34 @@
 
 ;; helper to reorder the term symbols at compile-time.
 ;; expected behaviour:
-;;    (reorder-term op (1 2 3) ()) -> (cons (op 1 2 3) '())
-;;    (reorder-term op (1 2 x 3 x x) ()) -> (cons (op 1 2 3) (list x x x))
+;;    (reorder-term (op 1 2 3)) -> (op 1 2 3)
+;;    (reorder-term (op 1 2 x 3 x x)) -> (cons (op 1 2 3) (list x x x))
 ;; TODO this is not going to work well e.g. with (- 8 3 2) or (/ 8 3 2)
-(define (reorder-term op t)
-  (define (rt-aux t r)
-    ;; t: input term
-    ;; r: output term (recursively builds a reordered copy of t)
-    (cond [(null? t) r]
-          [(null? r) (rt-aux (cdr t) (list (car t)))]
+(define (reorder-term expr)
+  (define (rt-aux op vals r)
+    ;; op: the operation applied in this expression
+    ;; vals: operands
+    ;; r: output term (recursively builds a reordered copy of expr)
+    (cond [(null? vals) r]
+          [(null? r) (rt-aux op (cdr vals) (list (car vals)))]
           [else
-           (match* (t r)
+           (match* (vals r)
              ;; Recursive case, next element is a number, we can
              ;; apply op to update the head of r.
              [((list-rest (? number? arg0) args)
                (list-rest (? number? r0) rs))
-              (rt-aux args (cons (op arg0 r0) rs))]
+              (rt-aux op args (cons (l-eval `(,op ,arg0 ,r0)) rs))]
              ;; Recursive case, the next element is the first time we see a number.
              ;; Insert it at the head of the term.
              [((list-rest (? number? arg0) args) _)
-              (rt-aux args (cons arg0 r))]
+              (rt-aux op args (cons arg0 r))]
              ;; Recursive case, next element is a symbolic variable.
              ;; Append it to (car r).
              [((list-rest (? symbol? arg0) args)
                (list-rest r0 rs))
-              (rt-aux args (cons r0 (cons arg0 rs)))])]))
+              (rt-aux op args (cons r0 (cons arg0 rs)))])]))
   ;; Initialise the recursion.
-  (rt-aux t '()))
+  (rt-aux (car expr) (cdr expr) '()))
 
 
 ;; mult->expt rewrites a term in the form (4 x x x) to (4 (^ x 3)).
