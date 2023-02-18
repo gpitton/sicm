@@ -5,10 +5,12 @@
 (require "simpl-bblocks.rkt")
 (require rackunit rackunit/text-ui)
 
+
 ;; Required to use eval (racket-only).
 (define t-eval    ;; stands for test-eval
   (let ([ns (make-base-namespace)])
     (lambda (expr) (eval expr ns))))
+
 
 (define-test-suite aad-helpers
   (test-case "algorithmic differentiation"
@@ -59,16 +61,17 @@
                (check-equal? (rec-with term-add1 '(1 (2 3) (4 (5 6))))
                              '(1 (3 4) (4 (6 7))))))
   (test-case "reorder-term"
-             (check-equal? (reorder-term '(+ 1 2 3 4)) '(10))
-             (check-equal? (reorder-term '(* 1 2 3 4)) '(24))
+             (check-equal? (reorder-term '(+ 1 2 3 4)) 10)
+             (check-equal? (reorder-term '(* 1 2 3 4)) 24)
              ;(check-equal? (reorder-term '(c)) '(c))
              ;(check-equal? (reorder-term '((2))) '((2)))  ;; TODO check this
-             (check-equal? (reorder-term '(+ 2 3 c 3)) '(8 c))
-             (check-equal? (reorder-term '(+ c 2)) '(2 c))
+             (check-equal? (reorder-term '(+ 2 3 c 3)) '(+ 8 c))
+             (check-equal? (reorder-term '(+ c 2)) '(+ 2 c))
+             (check-equal? (reorder-term '(+ 2 2 5 x)) '(+ 9 x))
              (check-equal? (reorder-term '(+ c c 8 c c 4 c 1 c c))
-                           '(13 c c c c c c c))
+                           '(+ 13 c c c c c c c))
              (check-equal? (reorder-term '(* c c 8 c c 4 c 1 c c))
-                           '(32 c c c c c c c)))
+                           '(* 32 c c c c c c c)))
   (test-case "convert a multiplication to exponential notation"
              (check-equal? (mult->expt '()) 0)
              (check-equal? (mult->expt 5) 5)
@@ -113,5 +116,14 @@
                            '(+ (* (* 2 (^ x 1)) 5 b) (* 2 c))))
   )
 
+
+(define-test-suite simpl-integration
+  (test-case "integration tests for rec-with"
+             (check-equal? (rec-with expt->mult '(+ (^ x 3) 2 (^ x 5)))
+                           '(+ (* x x x) 2 (* x x x x x))))
+  )
+
+
 (run-tests aad-helpers)
 (run-tests simpl-helpers)
+(run-tests simpl-integration)

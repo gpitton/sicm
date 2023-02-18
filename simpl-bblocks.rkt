@@ -26,14 +26,19 @@
 ;; helper to reorder the term symbols at compile-time.
 ;; expected behaviour:
 ;;    (reorder-term (op 1 2 3)) -> (op 1 2 3)
-;;    (reorder-term (op 1 2 x 3 x x)) -> (cons (op 1 2 3) (list x x x))
+;;    (reorder-term (op 1 2 x 3 x x)) -> `(op ,(op 1 2 3) x x x)
 ;; TODO this is not going to work well e.g. with (- 8 3 2) or (/ 8 3 2)
 (define (reorder-term expr)
+  ;; op: the operation applied in this expression
+  ;; vals: operands
+  ;; r: output term (recursively builds a reordered copy of expr)
   (define (rt-aux op vals r)
-    ;; op: the operation applied in this expression
-    ;; vals: operands
-    ;; r: output term (recursively builds a reordered copy of expr)
-    (cond [(null? vals) r]
+    (cond [(and (null? vals)
+                (null? (cdr r)))
+           ;; r must be a single number or symbol: just return it.
+           (car r)]
+          ;; r is a (reordered) list: prepend the operation and return.
+          [(null? vals) (cons op r)]
           [(null? r) (rt-aux op (cdr vals) (list (car vals)))]
           [else
            (match* (vals r)
@@ -102,7 +107,7 @@
          ;; Rewrite.
          (let ([var (cadr term)]
                [n (caddr term)])
-           `(* ,(make-list n var)))]
+           `(* ,@(make-list n var)))]
         ;; Nothing to do.
         [else term]))
 
