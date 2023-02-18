@@ -1,57 +1,8 @@
 #lang racket
-
-(provide grad reorder-term mult->expt simpl-zmul simpl-1mul
-         simpl-zadd simpl-nesting)
-
-;; Helper functions for the algorithmic differentiation of polynomial expressions
-
-
-;(define-syntax ^
-;  (lambda (stx)
-;    (raise-syntax-error #f "unexpected use of ^" stx)))
-
-;; Required to use eval (racket-only).
-(define l-eval    ;; stands for local-eval
-  (let ([ns (make-base-namespace)])
-    (lambda (expr) (eval expr ns))))
-
-
-(define (eq-sym? a b)
-  (and (symbol? a)
-       (symbol? b)
-       (eq? a b)))
-
-
-;; Gradient of the polynomial expression expr with respect to
-;; the variable var.
-(define (grad expr var)
-  (cond
-    [(number? expr) 0]
-    [(symbol? expr)
-     (if (eq-sym? expr var) 1 0)]
-    [else
-     (match expr
-       ;; Terminate the recursion
-       [(list ex) (grad ex var)]
-       ;; Definitions for + - * ^.
-       [(list '^ x 1)
-        (grad x var)]
-       [(list '^ x (? number? n))
-        #:when (eq-sym? x var)
-        `(* ,n (^ ,x ,(sub1 n)))]
-       [(list-rest '+ ex0 exs)
-        `(+ ,(grad ex0 var)
-            ,(grad `(+ ,@exs) var))]
-       ; - is misleading: better to use + negate x instead.
-       ;[(list-rest - ex0 exs)
-       ; `(- ,(grad ex0 var)
-       ;     ,(grad `(- ,@exs var))]
-       [(list-rest '* exs)
-        `(+ ,@(map (lambda (ex)
-                     (let ([rest (remove ex exs)])
-                       `(* ,(grad ex var) ,@rest)))
-                   exs))])]))
-
+;; Building blocks for the simplification/reduction to normal form
+;; of polynomial expressions.
+(provide (all-defined-out))
+(require "utils.rkt")
 
 ;; helper to reorder the term symbols at compile-time.
 ;; expected behaviour:
@@ -82,7 +33,8 @@
                (list-rest r0 rs))
               (rt-aux op args (cons r0 (cons arg0 rs)))])]))
   ;; Initialise the recursion.
-  (rt-aux (car expr) (cdr expr) '()))
+  (if (null? expr) '()
+      (rt-aux (car expr) (cdr expr) '())))
 
 
 ;; mult->expt rewrites a term in the form (4 x x x) to (4 (^ x 3)).
@@ -120,7 +72,21 @@
     [else (me-aux term 0)]))
 
 
-(define (num-zero? x) (and (number? x) (zero? x)))
+;; expt->mult does the inverse transformation of mult->expt.
+;; Examples:
+;;   (* 2 x) -> (* 2 x) (unchanged)
+;;   (^ x 5) -> (* x x x x x)
+(define (expt->mult term)
+  (cond [(null? term) '()]
+        [(not-list? term) term]
+        [(eq? (car term) '^)
+         ;; Rewrite.
+         (let ([var (cadr term)]
+               [n (caddr term)])
+         `(* ,(make-list n var)))]
+        ;; Nothing to do.
+        [else term]))
+
 
 ;; simpl-zmul simplifies an expression that has a multiplication
 ;; by zero. Example: (+ 2 (* 3 (^ x 2) 0)) -> (+ 2 0)
@@ -160,11 +126,6 @@
   (call/cc (sz-aux expr #f)))
 
 
-(define (not-list? x) (not (list? x)))
-(define (one? x) (eq? x 1))
-(define (num-one? x) (and (number? x) (one? x)))
-(define (not-one? x) (or (not (number? x))
-                         (not (one? x))))
 ;; simpl-1mul simplifies an expression by removing any factors
 ;; equal to 1 in a multiplication expression.
 (define (simpl-1mul expr)
@@ -186,8 +147,6 @@
          (map simpl-1mul expr)]))
 
 
-(define (not-zero? x) (or (not (number? x))
-                          (not (zero? x))))
 ;;simpl-zadd simplifies an expression by removing any zeroes
 ;; in a summation expression.
 (define (simpl-zadd expr)
@@ -230,6 +189,7 @@
         [(member (car expr) '(+ *))
          (if (null? (cddr expr))
              ;; List with an operator + or * followed by a single element.
+             ;; e.g. '(+ (3))
              ;; We can remove one level of nesting.
              (simpl-nesting (cdr expr))
              ;; else recur. We need to apply this simplification action
@@ -239,5 +199,8 @@
          (map simpl-nesting expr)]))
 
 
-;; TODO we need a normal-form macro to rewrite a monomial
-;;      in a form like: (* x y x) -> (* (expt x 2) y)
+;; Combine the building blocks into a single functions computing
+;; the simplified normal form of the polynomial expression.
+(define (simplify expr)
+  (map mult->expt
+       (simpl-zadd (simpl-1mul (simpl-zmul expr)))))
