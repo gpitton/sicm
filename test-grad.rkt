@@ -120,7 +120,8 @@
 (define-test-suite simpl-integration
   (test-case "integration tests for rec-with"
              (check-equal? (rec-with expt->mult '(+ (^ x 3) 2 (^ x 5)))
-                           '(+ (* x x x) 2 (* x x x x x))))
+                           '(+ (* x x x) 2 (* x x x x x)))
+             (check-equal? (rec-with reorder-term '(+ (* 1 x) 2)) '(+ (* 1 x) 2)))
   )
 
 

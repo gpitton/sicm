@@ -57,8 +57,12 @@
                (list-rest r0 rs))
               (rt-aux op args (cons r0 (cons arg0 rs)))])]))
   ;; Initialise the recursion.
-  (if (null? expr) '()
-      (rt-aux (car expr) (cdr expr) '())))
+  (cond [(null? expr) '()]
+        ;; Expression with a single element: not a valid term, but can happen
+        ;; while moving down an expression after composing this function with
+        ;; rec-with.
+        [(null? (cdr expr)) expr]
+        [else (rt-aux (car expr) (cdr expr) '())]))
 
 
 ;; mult->expt rewrites a term in the form (4 x x x) to (4 (^ x 3)).
