@@ -47,6 +47,17 @@
                            '(+ (+ (* 0 b (^ x 2)) (* 0 5 (^ x 2))
                                   (* (* 2 (^ x 1)) 5 b))
                                (+ (+ (* 0 c x) (* 0 2 x) (* 1 2 c)) (+ 0 0)))))
+  )
+
+
+(define-test-suite simpl-helpers
+  (test-case "expression walker"
+             (let ([term-add1 (lambda (xs) (map add1 xs))])
+               (check-equal? (rec-with term-add1 '()) '())
+               (check-equal? (rec-with term-add1 1) 1)
+               (check-equal? (rec-with term-add1 '(1 2 3)) '(2 3 4))
+               (check-equal? (rec-with term-add1 '(1 (2 3) (4 (5 6))))
+                             '(1 (3 4) (4 (6 7))))))
   (test-case "reorder-term"
              (check-equal? (reorder-term '(+ 1 2 3 4)) '(10))
              (check-equal? (reorder-term '(* 1 2 3 4)) '(24))
@@ -103,3 +114,4 @@
   )
 
 (run-tests aad-helpers)
+(run-tests simpl-helpers)

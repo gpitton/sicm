@@ -4,6 +4,25 @@
 (provide (all-defined-out))
 (require "utils.rkt")
 
+
+;; rec-with recursively applies the function f to the expression expr.
+;; This is useful to apply a simplification/rewriting function that
+;; is defined on a single term to a general expression composed of
+;; many terms. Contract: f is supposed to be a function that accepts
+;; a term (or list), and can return anything.
+;; Most of the functions defined in this file are meant to be applied
+;; to a polynomial expression by using rec-with.
+(define (rec-with f expr)
+  (cond [(null? expr) '()]
+        [(not-list? expr) expr]
+        ;; The input expression does not have any sub-expression as
+        ;; a constituent.
+        [(andmap not-list? expr) (f expr)]
+        [else  ;; recur
+         (cons (rec-with f (car expr))
+               (rec-with f (cdr expr)))]))
+
+
 ;; helper to reorder the term symbols at compile-time.
 ;; expected behaviour:
 ;;    (reorder-term (op 1 2 3)) -> (op 1 2 3)
@@ -83,7 +102,7 @@
          ;; Rewrite.
          (let ([var (cadr term)]
                [n (caddr term)])
-         `(* ,(make-list n var)))]
+           `(* ,(make-list n var)))]
         ;; Nothing to do.
         [else term]))
 
@@ -197,10 +216,3 @@
              `(,(car expr) ,@(map simpl-nesting (cdr expr))))]
         [else ;; recur
          (map simpl-nesting expr)]))
-
-
-;; Combine the building blocks into a single functions computing
-;; the simplified normal form of the polynomial expression.
-(define (simplify expr)
-  (map mult->expt
-       (simpl-zadd (simpl-1mul (simpl-zmul expr)))))
