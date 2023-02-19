@@ -3,6 +3,7 @@
 
 (require "aad-bblocks.rkt")
 (require "simpl-bblocks.rkt")
+(require "simplification-subroutines.rkt")
 (require rackunit rackunit/text-ui)
 
 
@@ -52,6 +53,46 @@
   )
 
 
+(define-test-suite simplify-expression
+  ;; Tests for the expression simplification subroutines that are
+  ;; meant to be applied to a full polynomial expression.
+    (test-case "simplify multiplication by zero"
+             (check-equal? (simplify-zmul '()) '())
+             (check-equal? (simplify-zmul '(+ 2 3)) '(+ 2 3))
+             (check-equal? (simplify-zmul '(* 1 2)) '(* 1 2))
+             (check-equal? (simplify-zmul '(* 1 2 3 4 0)) 0)
+             (check-equal? (simplify-zmul '(+ (* 2 3 (+ 1 1)) (* 4 (* 1 0) 5)))
+                           '(+ (* 2 3 (+ 1 1)) 0))
+             (check-equal? (simplify-zmul '(+ (* 2 4 (^ x 4) (* (+ 1 2) 0)) 2))
+                           '(+ 0 2))
+             (check-equal? (simplify-zmul '(+ (* 1 (c c c c 5)) (* 0 (c c c c c))))
+                           '(+ (* 1 (c c c c 5)) 0))
+             (check-equal? (simplify-zmul '(+ (+ 2 3 (+ 1 0)) (* 2 (+ 1 1 0))))
+                           '(+ (+ 2 3 (+ 1 0)) (* 2 (+ 1 1 0)))))
+  (test-case "simplify multiplication by one"
+             (check-equal? (simplify-1mul '()) '())
+             (check-equal? (simplify-1mul '(* 1 2 3)) '(* 2 3))
+             (check-equal? (simplify-1mul '(* 1 (* 2 3 1) 4 1)) '(* (* 2 3) 4))
+             (check-equal? (simplify-1mul '(* x (+ 3 (* x 1 3) 2) 1))
+                           '(* x (+ 3 (* x 3) 2)))
+             (check-equal? (simplify-1mul '(1 (^ x 3))) '(1 (^ x 3)))
+             (check-equal? (simplify-1mul '(* 1 1)) 1)
+             (check-equal? (simplify-1mul '(* 1 1 (* 1 1) 1)) 1))
+  (test-case "simplify summations with zero"
+             (check-equal? (simplify-zadd '()) '())
+             (check-equal? (simplify-zadd '(+ 0 1 2 3)) '(+ 1 2 3))
+             (check-equal? (simplify-zadd '(+ 0 (* x 2 0) (+ 2 3 0) 1 0))
+                           '(+ (* x 2 0) (+ 2 3) 1))
+             (check-equal? (simplify-zadd '(+ 0 0)) 0)
+             (check-equal? (simplify-zadd '(+ 0 0 (+ 0 0))) 0))
+  (test-case "simplify terms with deeper nesting than necessary"
+             (check-equal? (simplify-nesting '(+ (+ 1))) 1)
+             (check-equal? (simplify-nesting '(+ (+ (* 2 3)))) '(* 2 3))
+             (check-equal? (simplify-nesting '(+ (+ (* (* 2 (^ x 1)) 5 b)) (+ (+ (* 2 c)))))
+                           '(+ (* (* 2 (^ x 1)) 5 b) (* 2 c))))
+  )
+
+
 (define-test-suite simpl-helpers
   (test-case "expression walker"
              (let ([term-add1 (lambda (xs) (map add1 xs))])
@@ -80,40 +121,6 @@
              (check-equal? (mult->expt '(x x)) '(1 (^ x 2)))
              (check-equal? (mult->expt '(1 x x x)) '(1 (^ x 3)))
              (check-equal? (mult->expt '(6 x x x x x x)) '(6 (^ x 6))))
-  (test-case "simplify multiplication by zero"
-             (check-equal? (simpl-zmul '()) '())
-             (check-equal? (simpl-zmul '(+ 2 3)) '(+ 2 3))
-             (check-equal? (simpl-zmul '(* 1 2)) '(* 1 2))
-             (check-equal? (simpl-zmul '(* 1 2 3 4 0)) 0)
-             (check-equal? (simpl-zmul '(+ (* 2 3 (+ 1 1)) (* 4 (* 1 0) 5)))
-                           '(+ (* 2 3 (+ 1 1)) 0))
-             (check-equal? (simpl-zmul '(+ (* 2 4 (^ x 4) (* (+ 1 2) 0)) 2))
-                           '(+ 0 2))
-             (check-equal? (simpl-zmul '(+ (* 1 (c c c c 5)) (* 0 (c c c c c))))
-                           '(+ (* 1 (c c c c 5)) 0))
-             (check-equal? (simpl-zmul '(+ (+ 2 3 (+ 1 0)) (* 2 (+ 1 1 0))))
-                           '(+ (+ 2 3 (+ 1 0)) (* 2 (+ 1 1 0)))))
-  (test-case "simplify multiplication by one"
-             (check-equal? (simpl-1mul '()) '())
-             (check-equal? (simpl-1mul '(* 1 2 3)) '(* 2 3))
-             (check-equal? (simpl-1mul '(* 1 (* 2 3 1) 4 1)) '(* (* 2 3) 4))
-             (check-equal? (simpl-1mul '(* x (+ 3 (* x 1 3) 2) 1))
-                           '(* x (+ 3 (* x 3) 2)))
-             (check-equal? (simpl-1mul '(1 (^ x 3))) '(1 (^ x 3)))
-             (check-equal? (simpl-1mul '(* 1 1)) 1)
-             (check-equal? (simpl-1mul '(* 1 1 (* 1 1) 1)) 1))
-  (test-case "simplify summations with zero"
-             (check-equal? (simpl-zadd '()) '())
-             (check-equal? (simpl-zadd '(+ 0 1 2 3)) '(+ 1 2 3))
-             (check-equal? (simpl-zadd '(+ 0 (* x 2 0) (+ 2 3 0) 1 0))
-                           '(+ (* x 2 0) (+ 2 3) 1))
-             (check-equal? (simpl-zadd '(+ 0 0)) 0)
-             (check-equal? (simpl-zadd '(+ 0 0 (+ 0 0))) 0))
-  (test-case "simplify terms with deeper nesting than necessary"
-             (check-equal? (simpl-nesting '(+ (+ 1))) 1)
-             (check-equal? (simpl-nesting '(+ (+ (* 2 3)))) '(* 2 3))
-             (check-equal? (simpl-nesting '(+ (+ (* (* 2 (^ x 1)) 5 b)) (+ (+ (* 2 c)))))
-                           '(+ (* (* 2 (^ x 1)) 5 b) (* 2 c))))
   )
 
 
@@ -126,5 +133,6 @@
 
 
 (run-tests aad-helpers)
+(run-tests simplify-expression)
 (run-tests simpl-helpers)
 (run-tests simpl-integration)
