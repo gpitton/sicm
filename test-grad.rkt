@@ -101,6 +101,12 @@
                (check-equal? (rec-with term-add1 '(1 2 3)) '(2 3 4))
                (check-equal? (rec-with term-add1 '(1 (2 3) (4 (5 6))))
                              '(1 (3 4) (4 (6 7))))))
+  (test-case "expression walker*"
+             (let ([term-add1 (lambda (xs) (map add1 xs))])
+               (check-equal? (rec-with* term-add1 '()) '())
+               (check-equal? (rec-with* term-add1 1) 1)
+               (check-equal? (rec-with* term-add1 '(1 3)) '(2 4)))
+             (check-equal? (rec-with* length '((1 2) (3 4))) 2))
   (test-case "reorder-term"
              (check-equal? (reorder-term '(+ 1 2 3 4)) 10)
              (check-equal? (reorder-term '(* 1 2 3 4)) 24)
@@ -108,11 +114,20 @@
              ;(check-equal? (reorder-term '((2))) '((2)))  ;; TODO check this
              (check-equal? (reorder-term '(+ 2 3 c 3)) '(+ 8 c))
              (check-equal? (reorder-term '(+ c 2)) '(+ 2 c))
+             (check-equal? (reorder-term '(* 0 2 x)) '(* 0 x))
              (check-equal? (reorder-term '(+ 2 2 5 x)) '(+ 9 x))
              (check-equal? (reorder-term '(+ c c 8 c c 4 c 1 c c))
                            '(+ 13 c c c c c c c))
              (check-equal? (reorder-term '(* c c 8 c c 4 c 1 c c))
-                           '(* 32 c c c c c c c)))
+                           '(* 32 c c c c c c c))
+             (check-equal? (reorder-term '(* (* 2 x) 5 b))
+                           '(* 5 b (* 2 x))))
+  (test-case "reorder-sublists"
+             (check-equal? (reorder-sublists '()) '())
+             (check-equal? (reorder-sublists 24) 24)
+             (check-equal? (reorder-sublists '(+ 2 3 4)) '(+ 2 3 4))
+             (check-equal? (reorder-sublists '(* 2 (+ 3 4) 5)) '(* 2 5 (+ 3 4)))
+             (check-equal? (reorder-sublists '(+ (* 2 x) 2)) '(+ 2 (* 2 x))))
   (test-case "convert a multiplication to exponential notation"
              (check-equal? (mult->expt '()) 0)
              (check-equal? (mult->expt 5) 5)
@@ -121,16 +136,25 @@
              (check-equal? (mult->expt '(x x)) '(1 (^ x 2)))
              (check-equal? (mult->expt '(1 x x x)) '(1 (^ x 3)))
              (check-equal? (mult->expt '(6 x x x x x x)) '(6 (^ x 6))))
+  (test-case "convert from exponential notation to multiplication"
+             (check-equal? (expt->mult '()) 0)
+             (check-equal? (expt->mult 3) 3)
+             (check-equal? (expt->mult '(^ x 1)) 'x)
+             ;(check-equal? (expt->mult '(^ 3 2) 9)) ;; TODO handle this case
+             (check-equal? (expt->mult '(^ x 2)) '(* x x))
+             (check-equal? (expt->mult '(^ x 3)) '(* x x x)))
   (test-case "simplify-add"
              (check-equal? (simpl-add '()) '())
              (check-equal? (simpl-add 2) 2)
              (check-equal? (simpl-add 'x) 'x)
+             (check-equal? (simpl-add '(^ x 3)) '(^ x 3))
              (check-equal? (simpl-add '(+ 2 3 x)) '(+ 2 3 x))
              (check-equal? (simpl-add '(+ 0 x x)) '(+ x x)))
   (test-case "simplify-mul"
              (check-equal? (simpl-mul '()) '())
              (check-equal? (simpl-mul 2) 2)
              (check-equal? (simpl-mul 'x) 'x)
+             (check-equal? (simpl-mul '(^ x 3)) '(^ x 3))
              (check-equal? (simpl-mul '(* 2 3 x)) '(* 2 3 x))
              (check-equal? (simpl-mul '(* 0 x x)) 0)
              (check-equal? (simpl-mul '(* 1 x x)) '(* x x))
@@ -142,7 +166,8 @@
   (test-case "integration tests for rec-with"
              (check-equal? (rec-with expt->mult '(+ (^ x 3) 2 (^ x 5)))
                            '(+ (* x x x) 2 (* x x x x x)))
-             (check-equal? (rec-with reorder-term '(+ (* 1 x) 2)) '(+ (* 1 x) 2)))
+             (check-equal? (rec-with reorder-term '(+ (* 1 x) 2)) '(+ (* 1 x) 2))
+             (check-equal? (rec-with* reorder-sublists  '(* (* 2 x) 5 b)) '(* 5 b (* 2 x))))
   )
 
 

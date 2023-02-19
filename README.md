@@ -4,6 +4,13 @@ This repository collects my exercises from the book _Structure and Interpretatio
 - [Online edition](https://tgvaughan.github.io/sicm/)
 - [Wikipedia entry](https://en.wikipedia.org/wiki/Structure_and_Interpretation_of_Classical_Mechanics)
 
+### To do
+It could be useful to add contracts to each term-rewriting function. Most
+contracts would be in the form: the output of this function cannot have a
+subexpression such that ...
+
+- it would be particularly useful to put a contract that checks the signatures of the functions passed to `rec-with` and `rec-with*`.
+
 ### Lessons learned
 - use pattern-matching and ellipses (`...`) instead of doing
   `datum->syntax` . `car` or `cdr` . `syntax->datum` all the time.

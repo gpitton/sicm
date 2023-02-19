@@ -6,6 +6,7 @@
 (define (num-zero? x) (and (number? x) (zero? x)))
 
 (define (not-list? x) (not (list? x)))
+(define (atom? x) (or (number? x) (symbol? x)))
 (define (one? x) (eq? x 1))
 (define (num-one? x) (and (number? x) (one? x)))
 (define (not-zero? x) (or (not (number? x))

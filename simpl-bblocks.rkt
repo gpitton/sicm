@@ -2,7 +2,7 @@
 ;; Building blocks for the simplification/reduction to normal form
 ;; of polynomial expressions.
 (provide (all-defined-out))
-(require (only-in "utils.rkt" l-eval not-list? not-one? not-zero? num-zero?))
+(require (only-in "utils.rkt" atom? l-eval not-one? one? not-zero? num-zero?))
 
 
 ;; rec-with recursively applies the function f to the expression expr.
@@ -14,20 +14,35 @@
 ;; to a polynomial expression by using rec-with.
 (define (rec-with f expr)
   (cond [(null? expr) '()]
-        [(not-list? expr) expr]
+        [(atom? expr) expr]
         ;; The input expression does not have any sub-expression as
         ;; a constituent.
-        [(andmap not-list? expr) (f expr)]
+        [(andmap atom? expr) (f expr)]
         [else  ;; recur
          (cons (rec-with f (car expr))
                (rec-with f (cdr expr)))]))
 
 
-;; helper to reorder the term symbols at compile-time.
-;; expected behaviour:
-;;    (reorder-term (op 1 2 3)) -> (op 1 2 3)
-;;    (reorder-term (op 1 2 x 3 x x)) -> `(op ,(op 1 2 3) x x x)
-;; TODO this is not going to work well e.g. with (- 8 3 2) or (/ 8 3 2)
+;; rec-with* is similar to rec-with in that it recursively parses an
+;; expression and it applies a given function f to this expression.
+;; In addition to that, it then re-applies f to the result of the
+;; recursive application. Note that f is required to act on lists.
+;; Examples:
+;;   (rec-with* f (1 (2 3)) -> (f (1 (f 2 3)))
+;;   (rec-with* f ((1 2) (3 4)) -> (f (f 1 2) (f 3 4))
+(define (rec-with* f expr)
+  (cond [(null? expr) '()]
+        [(atom? expr) expr]
+        [else  ;; recursively apply f to the arguments and then
+               ;; apply f to the result of that.
+         (f (map (lambda (ex) (rec-with* f ex)) expr))]))
+
+
+;; reorder-term is a helper to reorder the term symbols.
+;; Examples:
+;;    (op 1 2 3) -> (op 1 2 3)
+;;    (op 1 2 x 3 x x) -> `(op ,(op 1 2 3) x x x)
+;; !Note! that this is not going to work well e.g. with (- 8 3 2) or (/ 8 3 2)
 (define (reorder-term expr)
   ;; op: the operation applied in this expression
   ;; vals: operands
@@ -63,6 +78,24 @@
         ;; rec-with.
         [(null? (cdr expr)) expr]
         [else (rt-aux (car expr) (cdr expr) '())]))
+
+
+;; reorder-sublists reorders a term containing lists in such a way
+;; that all the atoms come before the lists, and the first element
+;; of the term is not moved. This function acts only at the outer-
+;; most layer of the expression; it does not reorder any sub-terms
+;; that may be inside the input term.
+;; Examples:
+;;   (* 2 (+ 3 4) 5) -> (* 2 5 (+ 3 4))
+;;   (+ (* 2 x) 2) -> (+ 2 (* 2 x))
+(define (reorder-sublists term)
+  (cond [(null? term) '()]
+        [(atom? term) term]
+        [else
+         (let ([op (car term)]
+               [args (cdr term)])
+           `(,op ,@(filter atom? args)
+                 ,@(filter list? args)))]))
 
 
 ;; mult->expt rewrites a term in the form (4 x x x) to (4 (^ x 3)).
@@ -103,15 +136,18 @@
 ;; expt->mult does the inverse transformation of mult->expt.
 ;; Examples:
 ;;   (* 2 x) -> (* 2 x) (unchanged)
+;;   (^ x 1) -> 'x
 ;;   (^ x 5) -> (* x x x x x)
 (define (expt->mult term)
-  (cond [(null? term) '()]
-        [(not-list? term) term]
+  (cond [(null? term) 0]
+        [(atom? term) term]
         [(eq? (car term) '^)
          ;; Rewrite.
          (let ([var (cadr term)]
                [n (caddr term)])
-           `(* ,@(make-list n var)))]
+           ;; Special handling for (^ x 1) -> x.
+           (if (one? n) var
+               `(* ,@(make-list n var))))]
         ;; Nothing to do.
         [else term]))
 
@@ -122,7 +158,7 @@
 ;;   (+ 0 x y) -> (+ x y)
 (define (simpl-add term)
   (cond [(null? term) term]
-        [(not-list? term) term]
+        [(atom? term) term]
         [(eq? (car term) '+)
          ;; This term is an addition.
          (let ([simpl-term (filter not-zero? (cdr term))])
@@ -134,7 +170,9 @@
                   (car simpl-term)]
                  ;; General case: return the original term with the
                  ;; zeros removed.
-                 [else `(+ ,@simpl-term)]))]))
+                 [else `(+ ,@simpl-term)]))]
+        [else  ;; This term is not a summation.
+         term]))
 
 
 ;; simpl-mul simplifies a term that contains a multiplication by zero or by one.
@@ -143,7 +181,7 @@
 ;;   (* x (+ 2 x) 1) -> (* x (+ 2 x))
 (define (simpl-mul term)
   (cond [(null? term) '()]
-        [(not-list? term) term]
+        [(atom? term) term]
         [(eq? (car term) '*)
          ;; This term is a multiplication.
          (let ([has-zeros
@@ -162,4 +200,6 @@
                         (car simpl-term)]
                        ;; General case: return the original term with the ones
                        ;; removed.
-                       [else `(* ,@simpl-term)]))))]))
+                       [else `(* ,@simpl-term)]))))]
+        [else  ;; This term is not a multiplication.
+         term]))
