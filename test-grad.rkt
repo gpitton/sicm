@@ -56,7 +56,7 @@
 (define-test-suite simplify-expression
   ;; Tests for the expression simplification subroutines that are
   ;; meant to be applied to a full polynomial expression.
-    (test-case "simplify multiplication by zero"
+  (test-case "simplify multiplication by zero"
              (check-equal? (simplify-zmul '()) '())
              (check-equal? (simplify-zmul '(+ 2 3)) '(+ 2 3))
              (check-equal? (simplify-zmul '(* 1 2)) '(* 1 2))
@@ -121,6 +121,20 @@
              (check-equal? (mult->expt '(x x)) '(1 (^ x 2)))
              (check-equal? (mult->expt '(1 x x x)) '(1 (^ x 3)))
              (check-equal? (mult->expt '(6 x x x x x x)) '(6 (^ x 6))))
+  (test-case "simplify-add"
+             (check-equal? (simpl-add '()) '())
+             (check-equal? (simpl-add 2) 2)
+             (check-equal? (simpl-add 'x) 'x)
+             (check-equal? (simpl-add '(+ 2 3 x)) '(+ 2 3 x))
+             (check-equal? (simpl-add '(+ 0 x x)) '(+ x x)))
+  (test-case "simplify-mul"
+             (check-equal? (simpl-mul '()) '())
+             (check-equal? (simpl-mul 2) 2)
+             (check-equal? (simpl-mul 'x) 'x)
+             (check-equal? (simpl-mul '(* 2 3 x)) '(* 2 3 x))
+             (check-equal? (simpl-mul '(* 0 x x)) 0)
+             (check-equal? (simpl-mul '(* 1 x x)) '(* x x))
+             (check-equal? (simpl-mul '(* 1 x 0 x)) 0))
   )
 
 

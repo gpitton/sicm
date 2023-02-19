@@ -2,7 +2,7 @@
 ;; Building blocks for the simplification/reduction to normal form
 ;; of polynomial expressions.
 (provide (all-defined-out))
-(require "utils.rkt")
+(require (only-in "utils.rkt" l-eval not-list? not-one? not-zero? num-zero?))
 
 
 ;; rec-with recursively applies the function f to the expression expr.
@@ -116,3 +116,50 @@
         [else term]))
 
 
+;; simpl-add simplifies a term that contains an addition with zero.
+;; Examples:
+;;   (+ 0 x) -> x
+;;   (+ 0 x y) -> (+ x y)
+(define (simpl-add term)
+  (cond [(null? term) term]
+        [(not-list? term) term]
+        [(eq? (car term) '+)
+         ;; This term is an addition.
+         (let ([simpl-term (filter not-zero? (cdr term))])
+           (cond [(null? simpl-term)
+                  ;; term was: (+ 0). This is a malformed expression.
+                  (error 'simpl-add "Illegal expression: ~a" term)]
+                 [(null? (cdr simpl-term))
+                  ;; Term was: (+ 0 x). Just return x.
+                  (car simpl-term)]
+                 ;; General case: return the original term with the
+                 ;; zeros removed.
+                 [else `(+ ,@simpl-term)]))]))
+
+
+;; simpl-mul simplifies a term that contains a multiplication by zero or by one.
+;; Examples:
+;;   (* 0 2 (+ x 3)) -> 0
+;;   (* x (+ 2 x) 1) -> (* x (+ 2 x))
+(define (simpl-mul term)
+  (cond [(null? term) '()]
+        [(not-list? term) term]
+        [(eq? (car term) '*)
+         ;; This term is a multiplication.
+         (let ([has-zeros
+                (ormap num-zero? (cdr term))])
+           (if has-zeros 0
+               ;; Else just remove the ones. If the result
+               ;; of removing the ones is a single number of symbol,
+               ;; get that atom out of the list and return it.
+               (let ([simpl-term
+                      (filter not-one? (cdr term))])
+                 (cond [(null? simpl-term)
+                        ;; term was: (* 1). This is a malformed expression.
+                        (error 'simpl-mul "Illegal expression: ~a" term)]
+                       [(null? (cdr simpl-term))
+                        ;; term was: (* 1 x). Just return x.
+                        (car simpl-term)]
+                       ;; General case: return the original term with the ones
+                       ;; removed.
+                       [else `(* ,@simpl-term)]))))]))
