@@ -34,7 +34,7 @@
   (cond [(null? expr) '()]
         [(atom? expr) expr]
         [else  ;; recursively apply f to the arguments and then
-               ;; apply f to the result of that.
+         ;; apply f to the result of that.
          (f (map (lambda (ex) (rec-with* f ex)) expr))]))
 
 
@@ -59,18 +59,22 @@
            (match* (vals r)
              ;; Recursive case, next element is a number, we can
              ;; apply op to update the head of r.
-             [((list-rest (? number? arg0) args)
-               (list-rest (? number? r0) rs))
+             [((list* (? number? arg0) args)
+               (list* (? number? r0) rs))
               (rt-aux op args (cons (l-eval `(,op ,arg0 ,r0)) rs))]
              ;; Recursive case, the next element is the first time we see a number.
              ;; Insert it at the head of the term.
-             [((list-rest (? number? arg0) args) _)
+             [((list* (? number? arg0) args) _)
               (rt-aux op args (cons arg0 r))]
              ;; Recursive case, next element is a symbolic variable.
              ;; Append it to (car r).
-             [((list-rest (? symbol? arg0) args)
-               (list-rest r0 rs))
-              (rt-aux op args (cons r0 (cons arg0 rs)))])]))
+             [((list* (? symbol? arg0) args)
+               (list* r0 rs))
+              (rt-aux op args (cons r0 (cons arg0 rs)))]
+             ;; Recursive case, next element is a list.
+             ;; Append it to the end of rs.
+             [((list* arg0 args) _)
+              (rt-aux op args (append r (list arg0)))])]))
   ;; Initialise the recursion.
   (cond [(null? expr) '()]
         ;; Expression with a single element: not a valid term, but can happen

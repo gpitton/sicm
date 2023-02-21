@@ -6,7 +6,7 @@
 ;; with rec-with) in simpl.bblocks.rkt
 
 (provide simplify-zmul simplify-1mul simplify-zadd simplify-nesting)
-(require (only-in "utils.rkt" not-list? not-one? num-one? not-zero? num-zero?))
+(require (only-in "utils.rkt" atom? not-one? num-one? not-zero? num-zero?))
 
 
 ;; simplify-zmul simplifies an expression that has a multiplication
@@ -21,8 +21,7 @@
   (define (sz-aux ex is-in-mult)
     (lambda (k)
       (cond [(null? ex) '()]
-            [(number? ex) ex]
-            [(symbol? ex) ex]
+            [(atom? ex) ex]
             ;; expr is a multiplication, and one of the sub-expressions
             ;; is zero. The expression will evaluate to with zero.
             [(and (eq? (car ex) '*)
@@ -54,7 +53,7 @@
 ;; equal to 1 in a multiplication expression.
 (define (simplify-1mul expr)
   (cond [(null? expr) '()]
-        [(not-list? expr) expr]
+        [(atom? expr) expr]
         [(eq? (car expr) '*)
          (let* ([s-expr
                  ;; recursively apply simplify-1mul...
@@ -75,7 +74,7 @@
 ;; in a summation expression.
 (define (simplify-zadd expr)
   (cond [(null? expr) '()]
-        [(not-list? expr) expr]
+        [(atom? expr) expr]
         [(eq? (car expr) '+)
          (let* ([s-expr
                  ;; recursively apply simpl-zadd...
@@ -99,11 +98,11 @@
 ;;   for example: (simpl-nesting '((+ 2 3)) -> '(+ 2 3)
 (define (simplify-nesting expr)
   (cond [(null? expr) '()]
-        [(not-list? expr) expr]
+        [(atom? expr) expr]
         ;; list with a single number or symbol. Remove one layer of nesting
         ;; and recur. TODO maybe this needs to be redefined in its own function.
         [(and (null? (cdr expr))
-              (not-list? (car expr)))
+              (atom? (car expr)))
          (car expr)]
         ;; list within a list. TODO maybe this needs to be redefined in its
         ;; own function.

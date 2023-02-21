@@ -4,6 +4,7 @@
 (require "aad-bblocks.rkt")
 (require "simpl-bblocks.rkt")
 (require "simplification-subroutines.rkt")
+(require "simplify.rkt")
 (require rackunit rackunit/text-ui)
 
 
@@ -167,7 +168,20 @@
              (check-equal? (rec-with expt->mult '(+ (^ x 3) 2 (^ x 5)))
                            '(+ (* x x x) 2 (* x x x x x)))
              (check-equal? (rec-with reorder-term '(+ (* 1 x) 2)) '(+ (* 1 x) 2))
+             (check-equal? (reorder-term '(* 1 2 (* x x x x x x)))
+                           '(* 2 (* x x x x x x)))
              (check-equal? (rec-with* reorder-sublists  '(* (* 2 x) 5 b)) '(* 5 b (* 2 x))))
+  )
+
+(define-test-suite simpl-full
+  (test-case "full simplification test"
+             (check-equal? (simplify
+                            '(+
+                              (+ (* 0 x x x) (* 1 4 x x) (* 1 4 x x) (* 1 4 x x))
+                              (+ (+ (* 0 x (^ x 6)) (* 1 2 (^ x 6)) (* (* 6 (^ x 5)) 2 x))
+                                 (+ 0 0))))
+                           '(+ (+ (* 4 x x) (* 4 x x) (* 4 x x)) (+ (* 2 (* x x x x x x))
+                                                                    (* 2 x (* 6 (* x x x x x)))))))
   )
 
 
@@ -175,3 +189,4 @@
 (run-tests simplify-expression)
 (run-tests simpl-helpers)
 (run-tests simpl-integration)
+(run-tests simpl-full)
