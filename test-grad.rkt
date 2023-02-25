@@ -160,6 +160,16 @@
              (check-equal? (simpl-mul '(* 0 x x)) 0)
              (check-equal? (simpl-mul '(* 1 x x)) '(* x x))
              (check-equal? (simpl-mul '(* 1 x 0 x)) 0))
+  (test-case "simpl-nested-op"
+             (check-equal? (simpl-nested-op '()) '())
+             (check-equal? (simpl-nested-op 22) 22)
+             (check-equal? (simpl-nested-op 'x) 'x)
+             (check-equal? (simpl-nested-op '(* 2 (* 3 4) (+ 5 6)))
+                           '(* (+ 5 6) 2 3 4))
+             (check-equal? (simpl-nested-op '(+ (+ 1 2) 3 (+ 4 5)))
+                           '(+ 1 2 3 4 5))
+             (check-equal? (simpl-nested-op '(+ (+ 1 2) (+ 3 4)))
+                           '(+ 1 2 3 4)))
   )
 
 

@@ -207,3 +207,37 @@
                        [else `(* ,@simpl-term)]))))]
         [else  ;; This term is not a multiplication.
          term]))
+
+
+;; simpl-nested-op simplifes a symbolic expression that has nested
+;; sub-expressions with the same operator.
+;; Example:
+;;   (* 1 (* 2 3) (+ 4 5)) -> (* 1 2 3 (+ 4 5))
+;;   (+ (+ 1 2) 3 (+ 4 5)) -> (+ 1 2 3 4 5)
+;; We do not guarantee that the order of the arguments is preserved.
+;; For instance both transformations below (and more) are acceptable:
+;;   (* 1 (* 2 3) (+ 4 5)) -> (* 1 2 3 (+ 4 5))
+;;   (* 1 (* 2 3) (+ 4 5)) -> (* (+ 4 5) 3 2 1)
+(define (simpl-nested-op term)
+  (define (nested-op-aux op expr)
+    ;; Helper function for the fold operation.
+    (let ([compare-and-splice
+           (lambda (x acc)
+             (cond [(null? x) acc]
+                   [(atom? x) (append acc (list x))]
+                   ;; x is a list. Does it have the same operand as the main
+                   ;; s-expression?
+                   [(eq? (car x) op) (append acc (cdr x))]
+                   ;; x is a list, but it has a different operand than the main
+                   ;; s-expression.
+                   [else (cons x acc)]))])
+      (foldl compare-and-splice
+             '()
+             expr)))
+  ;; Initialisation logic.
+  (cond [(null? term) '()]
+        [(atom? term) term]
+        [(member (car term) '(+ *))
+         (cons (car term)
+               (nested-op-aux (car term) (cdr term)))]
+        [else term]))
