@@ -14,9 +14,10 @@
 (define (simplify expr)
   (let* ([mult-form (rec-with expt->mult expr)]
          [reordered-form (rec-with* reorder-sublists mult-form)]
-         [simpl-ops (compose simpl-add simpl-mul reorder-term)])
+         [simpl-ops (compose simpl-add simpl-mul reorder-term simpl-nested-op)])
     (rec-with* simpl-ops reordered-form)))
 
+#|
 (define s0 '(+
   (+ (* 0 x x x) (* 1 4 x x) (* 1 4 x x) (* 1 4 x x))
   (+
@@ -33,3 +34,7 @@
 (define s5 (rec-with* simpl-add s4))
 (displayln "")
 (displayln s5)
+(define s6 (rec-with* simpl-nested-op s5))
+(displayln "")
+(displayln s6)
+|#
